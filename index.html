@@ -4,214 +4,176 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Dot Sphere</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
     <style>
         body {
             margin: 0;
-            overflow: hidden; /* Prevent scrollbars */
-            background: linear-gradient(135deg, #333 0%, #1a1a1a 50%, #000 100%); /* Shades of grey and black */
-            cursor: default; /* Default cursor */
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #111;
+            color: #fff;
+            font-family: sans-serif;
+            overflow: hidden; /* Hide scrollbars */
         }
-        canvas {
-            display: block; /* Remove extra space below inline canvas */
+
+        #sphere-container {
+            width: 500px; /* Adjust as needed */
+            height: 500px; /* Adjust as needed */
+            position: relative;
+            /* This is crucial for 3D transforms of children */
+            transform-style: preserve-3d;
+            perspective: 1000px; /* How "deep" the 3D effect is */
+        }
+
+        .dot {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: #00ffcc; /* A nice bright color */
+            border-radius: 50%;
+            box-shadow: 0 0 5px #00ffcc, 0 0 10px #00ffcc;
+            /* Dots will be positioned by JS */
+            left: 50%; /* Center origin for transforms */
+            top: 50%;  /* Center origin for transforms */
+            margin-left: -4px; /* Half of width */
+            margin-top: -4px;  /* Half of height */
+            opacity: 0; /* Start invisible for initial animation */
+        }
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #aaa;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
-    <canvas id="sphereCanvas"></canvas>
+    <div id="sphere-container">
+        <!-- Dots will be generated here by JavaScript -->
+    </div>
+    <div id="instructions">Move your mouse to rotate the sphere.</div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
     <script>
-        // --- Essential Setup ---
-        const canvas = document.getElementById('sphereCanvas');
-        if (!canvas) {
-            console.error("Canvas element not found!");
-            // You might want to stop script execution here if canvas is critical
+        const sphereContainer = document.getElementById('sphere-container');
+        const numDots = 200; // Number of dots
+        const sphereRadius = 200; // Radius of the sphere in pixels
+        const dotElements = [];
+
+        // Mouse position tracking with smoothing
+        let mouseX = 0, mouseY = 0;
+        let targetMouseX = 0, targetMouseY = 0;
+        const easingFactor = 0.08; // Adjust for more/less smoothing
+
+        // --- 1. Create Dots ---
+        function createDots() {
+            for (let i = 0; i < numDots; i++) {
+                const dot = document.createElement('div');
+                dot.classList.add('dot');
+                sphereContainer.appendChild(dot);
+
+                // Fibonacci sphere algorithm for even distribution
+                const phi = Math.acos(-1 + (2 * i) / numDots);
+                const theta = Math.sqrt(numDots * Math.PI) * phi;
+
+                // Store initial spherical coordinates and a unique radius variation
+                dot.dataset.phi = phi;
+                dot.dataset.theta = theta;
+                // Add a little randomness to radius for depth variation
+                dot.dataset.radiusOffset = (Math.random() - 0.5) * (sphereRadius * 0.1);
+
+                dotElements.push(dot);
+            }
         }
 
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setClearColor(0x000000, 0); // Transparent renderer background
+        // --- 2. Update Dot Positions (called every frame) ---
+        function updateDotPositions() {
+            // Smoothly update current mouse position towards target
+            mouseX += (targetMouseX - mouseX) * easingFactor;
+            mouseY += (targetMouseY - mouseY) * easingFactor;
 
-        // --- Sphere Configuration ---
-        const sphereRadius = 2.5;
-        const dotCount = 700;
-        const dotSize = 0.04;
-        const purpleColor = 0x8A2BE2; // Purple
+            // Calculate rotation angles based on mouse position
+            // Map mouseX from -windowWidth/2 to +windowWidth/2 to -PI to +PI (for Y-axis rotation)
+            // Map mouseY from -windowHeight/2 to +windowHeight/2 to -PI/2 to +PI/2 (for X-axis rotation)
+            const rotationY = (mouseX / window.innerWidth) * Math.PI * 2;
+            const rotationX = (mouseY / window.innerHeight) * Math.PI;
 
-        // --- Particle System ---
-        const particlesGeometry = new THREE.BufferGeometry();
-        const positions = [];         // Flat array [x1,y1,z1, x2,y2,z2, ...]
-        const originalPositions = []; // Array of THREE.Vector3
-        const particleData = [];      // Stores { isDisplaced: bool, activeAnimation: animeInstance | null }
+            dotElements.forEach(dot => {
+                const phi = parseFloat(dot.dataset.phi);
+                const theta = parseFloat(dot.dataset.theta);
+                const radiusOffset = parseFloat(dot.dataset.radiusOffset);
+                const currentRadius = sphereRadius + radiusOffset;
 
-        // Fibonacci lattice for even sphere distribution
-        const samples = dotCount;
-        const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+                // Spherical to Cartesian (initial position)
+                let x = currentRadius * Math.sin(phi) * Math.cos(theta);
+                let y = currentRadius * Math.sin(phi) * Math.sin(theta);
+                let z = currentRadius * Math.cos(phi);
 
-        for (let i = 0; i < samples; i++) {
-            const y = 1 - (i / (samples - 1)) * 2;  // y goes from 1 to -1
-            const radiusAtY = Math.sqrt(1 - y * y); // radius at this y
-            const theta = goldenAngle * i;
+                // Apply Y-axis rotation (based on mouseX)
+                let tempX = x;
+                x = tempX * Math.cos(rotationY) - z * Math.sin(rotationY);
+                z = tempX * Math.sin(rotationY) + z * Math.cos(rotationY);
 
-            const x = Math.cos(theta) * radiusAtY * sphereRadius;
-            const z = Math.sin(theta) * radiusAtY * sphereRadius;
-            const finalY = y * sphereRadius;
+                // Apply X-axis rotation (based on mouseY)
+                let tempY = y;
+                y = tempY * Math.cos(rotationX) - z * Math.sin(rotationX);
+                z = tempY * Math.sin(rotationX) + z * Math.cos(rotationX);
 
-            positions.push(x, finalY, z);
-            originalPositions.push(new THREE.Vector3(x, finalY, z));
-            particleData.push({ isDisplaced: false, activeAnimation: null });
+                // Perspective scaling: dots further away (larger Z) are smaller and dimmer
+                // Adjust perspectiveStrength to control how much Z affects scale and opacity
+                const perspectiveStrength = 800; // Lower values = more pronounced perspective
+                const scale = perspectiveStrength / (perspectiveStrength + z);
+
+                dot.style.transform = `translate3d(${x}px, ${y}px, ${z}px) scale(${Math.max(0, scale)})`;
+                dot.style.opacity = Math.max(0.1, scale * 0.9); // Ensure minimum opacity
+                dot.style.zIndex = Math.floor(scale * 1000); // Basic z-ordering
+            });
         }
 
-        particlesGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-        const particlesMaterial = new THREE.PointsMaterial({
-            color: purpleColor,
-            size: dotSize,
-            sizeAttenuation: true
+        // --- 3. Mouse Move Listener ---
+        window.addEventListener('mousemove', (event) => {
+            // Convert mouse position to be relative to center of screen
+            targetMouseX = event.clientX - window.innerWidth / 2;
+            targetMouseY = event.clientY - window.innerHeight / 2;
         });
-        const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
-        scene.add(particleSystem);
 
-        camera.position.z = 5.5;
+        // --- 4. Initial Animation & Main Loop ---
+        function init() {
+            createDots();
 
-        // --- Mouse Interaction ---
-        const mouse = new THREE.Vector2(-100, -100); // Initialize off-screen
-        const raycaster = new THREE.Raycaster();
-        raycaster.params.Points.threshold = 0.15; // Sensitivity for hitting points
-
-        let lastIntersectedIndices = new Set();
-
-        function onMouseMove(event) {
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-        }
-        document.addEventListener('mousemove', onMouseMove, false);
-
-        // --- Animation Logic (Anime.js) ---
-        const repulsionStrength = 0.8;
-        const animationDurationBase = 350;
-
-        function animateDotToTarget(index, targetPosition, easing, duration) {
-            if (particleData[index].activeAnimation) {
-                particleData[index].activeAnimation.pause(); // Stop existing animation
-            }
-
-            const posArray = particlesGeometry.attributes.position.array;
-            // Create a temporary object for Anime.js to tween, then update buffer in 'update'
-            let currentAnimatedValues = {
-                x: posArray[index * 3],
-                y: posArray[index * 3 + 1],
-                z: posArray[index * 3 + 2]
-            };
-
-            particleData[index].activeAnimation = anime({
-                targets: currentAnimatedValues,
-                x: targetPosition.x,
-                y: targetPosition.y,
-                z: targetPosition.z,
-                duration: duration,
-                easing: easing,
-                update: function() {
-                    posArray[index * 3]     = currentAnimatedValues.x;
-                    posArray[index * 3 + 1] = currentAnimatedValues.y;
-                    posArray[index * 3 + 2] = currentAnimatedValues.z;
-                    particlesGeometry.attributes.position.needsUpdate = true;
-                },
-                complete: function() {
-                    particleData[index].activeAnimation = null;
-                    // Note: isDisplaced is managed by the calling functions (repelDot/returnDot)
+            // Initial animation for dots appearing
+            anime({
+                targets: '.dot',
+                opacity: [0, 1], // Animate from opacity 0 to their calculated opacity
+                scale: [0, 1],   // Animate from scale 0
+                translateZ: [-100, 0], // Come from a bit further back
+                delay: anime.stagger(10), // Stagger appearance
+                duration: 1500,
+                easing: 'easeOutExpo',
+                complete: () => {
+                    // Start the continuous update loop after intro animation
+                    anime({
+                        targets: {}, // Dummy target, we only use the update callback
+                        update: updateDotPositions,
+                        duration: Infinity, // Run forever
+                        easing: 'linear'    // Not really used, but good practice
+                    });
                 }
             });
         }
 
-        function repelDot(index) {
-            // Avoid re-repelling if already moving away due to mouse, unless animation finished
-            if (particleData[index].isDisplaced && particleData[index].activeAnimation) return;
-            particleData[index].isDisplaced = true;
-
-            const currentPos = new THREE.Vector3().fromBufferAttribute(particlesGeometry.attributes.position, index);
-            
-            // Simple repulsion: away from a point near the mouse on the sphere's apparent surface
-            const mouseDirection = new THREE.Vector3(mouse.x, mouse.y, 0.5).unproject(camera).sub(camera.position).normalize();
-            const intersectionPoint = new THREE.Ray(camera.position, mouseDirection).intersectSphere(new THREE.Sphere(new THREE.Vector3(), sphereRadius), new THREE.Vector3());
-            
-            let repelFromPoint = currentPos; // Default if no clear intersection
-            if (intersectionPoint) {
-                repelFromPoint = intersectionPoint;
-            } else { // Fallback if mouse is far, repel radially from center
-                repelFromPoint = new THREE.Vector3(0,0,0);
-            }
-
-            const directionToRepel = currentPos.clone().sub(repelFromPoint).normalize();
-            const targetPos = currentPos.clone().add(directionToRepel.multiplyScalar(repulsionStrength));
-
-            animateDotToTarget(index, targetPos, 'easeOutQuad', animationDurationBase);
-        }
-
-        function returnDot(index) {
-            if (!particleData[index].isDisplaced) return; // Already home or not marked as displaced
-            
-            // Only start return if no active animation or if the active animation is not already returning to origin
-             const originalPos = originalPositions[index];
-            if (particleData[index].activeAnimation) {
-                const currentTarget = particleData[index].activeAnimation.animations[0].tweens[0].endValues;
-                if (currentTarget.x === originalPos.x && currentTarget.y === originalPos.y && currentTarget.z === originalPos.z) {
-                    return; // Already returning to origin
-                }
-            }
-
-            particleData[index].isDisplaced = false; // Mark as returning/returned
-            animateDotToTarget(index, originalPos, 'easeOutElastic(1, .7)', animationDurationBase + 200);
-        }
-
-        // --- Render Loop ---
-        function renderLoop() {
-            requestAnimationFrame(renderLoop);
-
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObject(particleSystem);
-            const currentIntersectedIndices = new Set();
-
-            if (intersects.length > 0) {
-                document.body.style.cursor = 'pointer';
-                for (const intersect of intersects) {
-                    if (intersect.index !== undefined) {
-                        currentIntersectedIndices.add(intersect.index);
-                        if (!lastIntersectedIndices.has(intersect.index)) {
-                            repelDot(intersect.index);
-                        }
-                    }
-                }
-            } else {
-                document.body.style.cursor = 'default';
-            }
-
-            lastIntersectedIndices.forEach(index => {
-                if (!currentIntersectedIndices.has(index)) {
-                    returnDot(index);
-                }
-            });
-            lastIntersectedIndices = new Set(currentIntersectedIndices); // Create a new Set
-
-            particleSystem.rotation.y += 0.0002; // Slower rotation
-            particleSystem.rotation.x += 0.0001;
-
-            renderer.render(scene, camera);
-        }
-
-        // --- Resize Handler ---
+        // --- 5. Handle Window Resize ---
+        // (Optional, but good practice if container size is relative)
         window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }, false);
+            // Recalculate mouse center if needed, or adjust sphereRadius based on window size
+            // For this demo, it's less critical as mouse positions are normalized.
+        });
 
-        // --- Start ---
-        console.log("Interactive sphere initialized. Check console for Three.js/Anime.js messages if issues.");
-        renderLoop();
-
+        // Start everything
+        init();
     </script>
 </body>
 </html>
