@@ -8,172 +8,94 @@
     <style>
         body {
             margin: 0;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: #111;
-            color: #fff;
-            font-family: sans-serif;
-            overflow: hidden; /* Hide scrollbars */
+            overflow: hidden;
+            background: #111;
         }
-
-        #sphere-container {
-            width: 500px; /* Adjust as needed */
-            height: 500px; /* Adjust as needed */
-            position: relative;
-            /* This is crucial for 3D transforms of children */
-            transform-style: preserve-3d;
-            perspective: 1000px; /* How "deep" the 3D effect is */
+        canvas {
+            display: block;
         }
-
         .dot {
             position: absolute;
-            width: 8px;
-            height: 8px;
-            background-color: #00ffcc; /* A nice bright color */
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
-            box-shadow: 0 0 5px #00ffcc, 0 0 10px #00ffcc;
-            /* Dots will be positioned by JS */
-            left: 50%; /* Center origin for transforms */
-            top: 50%;  /* Center origin for transforms */
-            margin-left: -4px; /* Half of width */
-            margin-top: -4px;  /* Half of height */
-            opacity: 0; /* Start invisible for initial animation */
-        }
-        #instructions {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: #aaa;
-            font-size: 14px;
+            background: #fff;
+            transform: translate(-50%, -50%);
         }
     </style>
 </head>
 <body>
-    <div id="sphere-container">
-        <!-- Dots will be generated here by JavaScript -->
-    </div>
-    <div id="instructions">Move your mouse to rotate the sphere.</div>
-
     <script>
-        const sphereContainer = document.getElementById('sphere-container');
-        const numDots = 200; // Number of dots
-        const sphereRadius = 200; // Radius of the sphere in pixels
-        const dotElements = [];
-
-        // Mouse position tracking with smoothing
-        let mouseX = 0, mouseY = 0;
-        let targetMouseX = 0, targetMouseY = 0;
-        const easingFactor = 0.08; // Adjust for more/less smoothing
-
-        // --- 1. Create Dots ---
-        function createDots() {
-            for (let i = 0; i < numDots; i++) {
-                const dot = document.createElement('div');
-                dot.classList.add('dot');
-                sphereContainer.appendChild(dot);
-
-                // Fibonacci sphere algorithm for even distribution
-                const phi = Math.acos(-1 + (2 * i) / numDots);
-                const theta = Math.sqrt(numDots * Math.PI) * phi;
-
-                // Store initial spherical coordinates and a unique radius variation
-                dot.dataset.phi = phi;
-                dot.dataset.theta = theta;
-                // Add a little randomness to radius for depth variation
-                dot.dataset.radiusOffset = (Math.random() - 0.5) * (sphereRadius * 0.1);
-
-                dotElements.push(dot);
-            }
-        }
-
-        // --- 2. Update Dot Positions (called every frame) ---
-        function updateDotPositions() {
-            // Smoothly update current mouse position towards target
-            mouseX += (targetMouseX - mouseX) * easingFactor;
-            mouseY += (targetMouseY - mouseY) * easingFactor;
-
-            // Calculate rotation angles based on mouse position
-            // Map mouseX from -windowWidth/2 to +windowWidth/2 to -PI to +PI (for Y-axis rotation)
-            // Map mouseY from -windowHeight/2 to +windowHeight/2 to -PI/2 to +PI/2 (for X-axis rotation)
-            const rotationY = (mouseX / window.innerWidth) * Math.PI * 2;
-            const rotationX = (mouseY / window.innerHeight) * Math.PI;
-
-            dotElements.forEach(dot => {
-                const phi = parseFloat(dot.dataset.phi);
-                const theta = parseFloat(dot.dataset.theta);
-                const radiusOffset = parseFloat(dot.dataset.radiusOffset);
-                const currentRadius = sphereRadius + radiusOffset;
-
-                // Spherical to Cartesian (initial position)
-                let x = currentRadius * Math.sin(phi) * Math.cos(theta);
-                let y = currentRadius * Math.sin(phi) * Math.sin(theta);
-                let z = currentRadius * Math.cos(phi);
-
-                // Apply Y-axis rotation (based on mouseX)
-                let tempX = x;
-                x = tempX * Math.cos(rotationY) - z * Math.sin(rotationY);
-                z = tempX * Math.sin(rotationY) + z * Math.cos(rotationY);
-
-                // Apply X-axis rotation (based on mouseY)
-                let tempY = y;
-                y = tempY * Math.cos(rotationX) - z * Math.sin(rotationX);
-                z = tempY * Math.sin(rotationX) + z * Math.cos(rotationX);
-
-                // Perspective scaling: dots further away (larger Z) are smaller and dimmer
-                // Adjust perspectiveStrength to control how much Z affects scale and opacity
-                const perspectiveStrength = 800; // Lower values = more pronounced perspective
-                const scale = perspectiveStrength / (perspectiveStrength + z);
-
-                dot.style.transform = `translate3d(${x}px, ${y}px, ${z}px) scale(${Math.max(0, scale)})`;
-                dot.style.opacity = Math.max(0.1, scale * 0.9); // Ensure minimum opacity
-                dot.style.zIndex = Math.floor(scale * 1000); // Basic z-ordering
+        const dots = [];
+        const numDots = 500;
+        const radius = 150;
+        let mouseX = 0;
+        let mouseY = 0;
+        
+        // Create sphere of dots
+        for (let i = 0; i < numDots; i++) {
+            const phi = Math.acos(-1 + (2 * i) / numDots);
+            const theta = Math.sqrt(numDots * Math.PI) * phi;
+            
+            const x = radius * Math.sin(phi) * Math.cos(theta);
+            const y = radius * Math.sin(phi) * Math.sin(theta);
+            const z = radius * Math.cos(phi);
+            
+            const dot = document.createElement('div');
+            dot.className = 'dot';
+            document.body.appendChild(dot);
+            
+            dots.push({
+                element: dot,
+                x: x,
+                y: y,
+                z: z,
+                scale: 1
             });
         }
-
-        // --- 3. Mouse Move Listener ---
-        window.addEventListener('mousemove', (event) => {
-            // Convert mouse position to be relative to center of screen
-            targetMouseX = event.clientX - window.innerWidth / 2;
-            targetMouseY = event.clientY - window.innerHeight / 2;
+        
+        // Handle mouse movement
+        document.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX - window.innerWidth / 2) / 50;
+            mouseY = (e.clientY - window.innerHeight / 2) / 50;
         });
-
-        // --- 4. Initial Animation & Main Loop ---
-        function init() {
-            createDots();
-
-            // Initial animation for dots appearing
-            anime({
-                targets: '.dot',
-                opacity: [0, 1], // Animate from opacity 0 to their calculated opacity
-                scale: [0, 1],   // Animate from scale 0
-                translateZ: [-100, 0], // Come from a bit further back
-                delay: anime.stagger(10), // Stagger appearance
-                duration: 1500,
-                easing: 'easeOutExpo',
-                complete: () => {
-                    // Start the continuous update loop after intro animation
-                    anime({
-                        targets: {}, // Dummy target, we only use the update callback
-                        update: updateDotPositions,
-                        duration: Infinity, // Run forever
-                        easing: 'linear'    // Not really used, but good practice
-                    });
-                }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            dots.forEach(dot => {
+                // Rotate dots
+                const rotX = dot.x * Math.cos(0.005) - dot.z * Math.sin(0.005);
+                const rotZ = dot.z * Math.cos(0.005) + dot.x * Math.sin(0.005);
+                
+                dot.x = rotX;
+                dot.z = rotZ;
+                
+                // Add mouse interaction
+                const scale = 1 + (dot.z / radius) * 0.5;
+                
+                // Project 3D to 2D
+                const perspective = 500;
+                const scaleFactor = perspective / (perspective + dot.z);
+                
+                const x2d = dot.x * scaleFactor + window.innerWidth / 2 + mouseX;
+                const y2d = dot.y * scaleFactor + window.innerHeight / 2 + mouseY;
+                
+                // Apply transformations
+                anime({
+                    targets: dot.element,
+                    left: x2d,
+                    top: y2d,
+                    scale: scale,
+                    opacity: scale,
+                    duration: 1000,
+                    easing: 'easeOutExpo'
+                });
             });
         }
-
-        // --- 5. Handle Window Resize ---
-        // (Optional, but good practice if container size is relative)
-        window.addEventListener('resize', () => {
-            // Recalculate mouse center if needed, or adjust sphereRadius based on window size
-            // For this demo, it's less critical as mouse positions are normalized.
-        });
-
-        // Start everything
-        init();
+        
+        animate();
     </script>
 </body>
 </html>
