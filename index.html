@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Dot Sphere & Blog UI</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #111 0%, #333 50%, #000 100%);
+            color: #eee;
+            overflow-x: hidden; /* Prevent horizontal scroll from sphere movements */
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        #sphere-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1; /* Behind content */
+            pointer-events: none; /* Allows clicking through to content */
+        }
+
+        #sphereCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .content-wrapper {
+            position: relative; /* For z-index stacking above canvas */
+            z-index: 1;
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+            flex-grow: 1;
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            border-bottom: 1px solid #444;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 0.2em;
+            color: #e0e0e0;
+        }
+
+        header p {
+            font-size: 1.1em;
+            color: #aaa;
+        }
+
+        nav {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            padding: 20px 0;
+            margin-bottom: 30px;
+        }
+
+        .modern-btn {
+            background-color: #500080; /* Purple accent */
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            font-weight: 500;
+            border-radius: 25px; /* Curved edges */
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            position: relative; /* For Mo.js burst */
+        }
+
+        .modern-btn:hover {
+            background-color: #6a00aa;
+            transform: translateY(-2px);
+        }
+
+        .modern-btn:active {
+            background-color: #400066;
+            transform: translateY(0px);
+        }
+
+        main {
+            background: rgba(30, 30, 30, 0.8); /* Slightly transparent dark background */
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        article {
+            margin-bottom: 30px;
+        }
+
+        article h2 {
+            color: #c0c0c0;
+            border-bottom: 2px solid #500080;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        article p {
+            line-height: 1.7;
+            color: #bbb;
+        }
+
+        footer {
+            text-align: center;
+            padding: 30px 20px;
+            border-top: 1px solid #444;
+            margin-top: 40px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div id="sphere-container">
+        <canvas id="sphereCanvas"></canvas>
+    </div>
+
+    <div class="content-wrapper">
+        <header>
+            <h1>My Modern Blog</h1>
+            <p>Exploring interactive design and web technologies</p>
+        </header>
+
+        <nav>
+            <button class="modern-btn">Home</button>
+            <button class="modern-btn" id="aboutBtn">About</button>
+            <button class="modern-btn">Articles</button>
+            <button class="modern-btn" id="contactBtnMojs">Contact (Mo.js)</button>
+        </nav>
+
+        <main>
+            <article>
+                <h2>Welcome to the Future of UI</h2>
+                <p>This page demonstrates an interactive background sphere created with Three.js, Anime.js, and Velocity.js. The dots in the sphere react to your cursor, moving away and then returning to their original positions. The UI elements, like the buttons, are styled for a modern look, with one button featuring an animation from Mo.js.</p>
+            </article>
+            <article>
+                <h2>Technology Stack</h2>
+                <p>We're using a blend of powerful JavaScript libraries:</p>
+                <ul>
+                    <li><strong>Three.js:</strong> For the 3D rendering of the dot sphere.</li>
+                    <li><strong>Anime.js:</strong> For smooth animations of the dots.</li>
+                    <li><strong>Velocity.js:</strong> Also contributing to dot animations.</li>
+                    <li><strong>Mo.js:</strong> To add delightful micro-interactions to UI elements.</li>
+                </ul>
+            </article>
+        </main>
+
+        <footer>
+            <p>© 2023 Interactive Web Demo. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/velocity/1.5.2/velocity.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mojs/core@1.4.0/build/mo.umd.min.js"></script>
+
+    <script>
+        // --- Three.js Sphere Setup ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('sphereCanvas'), alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000000, 0); // Transparent background for canvas
+
+        const sphereRadius = 2.5;
+        const dotCount = 500;
+        const dotSize = 0.05;
+        const purpleColor = 0x8A2BE2; // A nice purple
+
+        const particlesGeometry = new THREE.BufferGeometry();
+        const positions = [];
+        const originalPositions = []; // To store initial positions for return animation
+        const particleData = []; // Store per-particle animation state
+
+        // Create dots on a sphere surface
+        for (let i = 0; i < dotCount; i++) {
+            const phi = Math.acos(-1 + (2 * i) / dotCount);
+            const theta = Math.sqrt(dotCount * Math.PI) * phi;
+
+            const x = sphereRadius * Math.cos(theta) * Math.sin(phi);
+            const y = sphereRadius * Math.sin(theta) * Math.sin(phi);
+            const z = sphereRadius * Math.cos(phi);
+            
+            positions.push(x, y, z);
+            originalPositions.push(new THREE.Vector3(x, y, z));
+            particleData.push({
+                isDisplaced: false,
+                velocityAnimation: null, // To store Velocity animation instance
+                animeAnimation: null    // To store Anime.js animation instance
+            });
+        }
+
+        particlesGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        const particlesMaterial = new THREE.PointsMaterial({
+            color: purpleColor,
+            size: dotSize,
+            sizeAttenuation: true
+        });
+        const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
+        scene.add(particleSystem);
+
+        camera.position.z = 5;
+
+        // --- Mouse Interaction ---
+        const mouse = new THREE.Vector2();
+        const raycaster = new THREE.Raycaster();
+        raycaster.params.Points.threshold = 0.1; // How close mouse needs to be to a point
+
+        let lastIntersectedIndices = new Set(); // Keep track of currently repelled dots
+
+        function onMouseMove(event) {
+            // Adjust mouse position to be relative to the canvas container
+            // For this fixed fullscreen canvas, window coords are fine.
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            // The canvas has pointer-events: none, so this listener must be on window/document
+        }
+        document.addEventListener('mousemove', onMouseMove, false);
+
+
+        // --- Animation Logic ---
+        const repulsionStrength = 0.8;
+        const returnSpeed = 800; // ms for Anime.js
+        const velocityReturnDuration = 800; // ms for Velocity
+
+        function repelDot(index) {
+            if (particleData[index].isDisplaced) return; // Already being repelled or returning
+
+            particleData[index].isDisplaced = true;
+            
+            // Stop any ongoing return animation
+            if (particleData[index].animeAnimation) particleData[index].animeAnimation.pause();
+            if (particleData[index].velocityAnimation) Velocity(particlesGeometry.attributes.position.array.slice(index*3, index*3+3), "stop");
+
+
+            const currentPos = new THREE.Vector3(
+                particlesGeometry.attributes.position.getX(index),
+                particlesGeometry.attributes.position.getY(index),
+                particlesGeometry.attributes.position.getZ(index)
+            );
+            const originalPos = originalPositions[index];
+
+            // Calculate repulsion direction (from original position towards mouse, but further out)
+            // For simplicity, we'll just push it radially outwards from its original spot
+            const direction = currentPos.clone().sub(originalPos).normalize(); // Or use a vector from mouse in 3D
+            if (direction.lengthSq() === 0) { // If currentPos is originalPos, pick a random direction
+                direction.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
+            }
+            
+            const targetPos = originalPos.clone().add(direction.multiplyScalar(repulsionStrength));
+
+            // Animate with Velocity.js
+            const posArray = particlesGeometry.attributes.position.array;
+            const target = { x: targetPos.x, y: targetPos.y, z: targetPos.z };
+            
+            // Store reference to kill it if needed
+            particleData[index].velocityAnimation = Velocity(
+                { x: currentPos.x, y: currentPos.y, z: currentPos.z }, // Start values (elements to animate)
+                { x: target.x, y: target.y, z: target.z }, // End values
+                {
+                    duration: 300,
+                    easing: "easeOutQuad",
+                    progress: function(elements, complete, remaining, start, tweenValue) {
+                        // Velocity doesn't directly animate array elements in a way Three.js likes
+                        // So we update the buffer based on the tweened object's properties
+                        if (typeof tweenValue !== 'number') { // Check if it's the object being tweened
+                             posArray[index * 3] = tweenValue.x;
+                             posArray[index * 3 + 1] = tweenValue.y;
+                             posArray[index * 3 + 2] = tweenValue.z;
+                             particlesGeometry.attributes.position.needsUpdate = true;
+                        }
+                    },
+                    complete: function() {
+                        particleData[index].velocityAnimation = null;
+                    }
+                }
+            );
+        }
+
+        function returnDot(index) {
+            if (!particleData[index].isDisplaced) return; // Already home or not repelled
+
+            // Stop any ongoing repulsion animation (though it's short)
+             if (particleData[index].velocityAnimation) Velocity(particlesGeometry.attributes.position.array.slice(index*3, index*3+3), "stop");
+             if (particleData[index].animeAnimation) particleData[index].animeAnimation.pause();
+
+
+            const originalPos = originalPositions[index];
+            const posArray = particlesGeometry.attributes.position.array;
+
+            // Use an object for Anime.js to target
+            let currentAnimatedPos = {
+                x: posArray[index * 3],
+                y: posArray[index * 3 + 1],
+                z: posArray[index * 3 + 2]
+            };
+            
+            particleData[index].animeAnimation = anime({
+                targets: currentAnimatedPos,
+                x: originalPos.x,
+                y: originalPos.y,
+                z: originalPos.z,
+                duration: returnSpeed,
+                easing: 'easeOutElastic(1, .8)',
+                update: function() {
+                    posArray[index * 3] = currentAnimatedPos.x;
+                    posArray[index * 3 + 1] = currentAnimatedPos.y;
+                    posArray[index * 3 + 2] = currentAnimatedPos.z;
+                    particlesGeometry.attributes.position.needsUpdate = true;
+                },
+                complete: function() {
+                    particleData[index].isDisplaced = false;
+                    particleData[index].animeAnimation = null;
+                }
+            });
+        }
+
+
+        // --- Mo.js Button Animation ---
+        const mojsButton = document.getElementById('contactBtnMojs');
+        if (mojsButton) {
+            const burst = new mojs.Burst({
+                parent: mojsButton,
+                radius: { 0: 60 },
+                count: 8,
+                angle: { 0: 90 },
+                children: {
+                    shape: 'circle',
+                    fill: '#8A2BE2', // Purple
+                    radius: {8: 0},
+                    duration: 600,
+                    easing: 'cubic.out'
+                }
+            });
+
+            mojsButton.addEventListener('click', function (e) {
+                burst.replay();
+            });
+        }
+
+
+        // --- Render Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Raycasting
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(particleSystem);
+            
+            const currentIntersectedIndices = new Set();
+
+            if (intersects.length > 0) {
+                document.body.style.cursor = 'pointer'; // Indicate interactivity
+                for (const intersect of intersects) {
+                    if (intersect.index !== undefined) {
+                        currentIntersectedIndices.add(intersect.index);
+                        if (!lastIntersectedIndices.has(intersect.index)) {
+                            repelDot(intersect.index);
+                        }
+                    }
+                }
+            } else {
+                 document.body.style.cursor = 'default';
+            }
+
+            // Return dots that are no longer intersected
+            lastIntersectedIndices.forEach(index => {
+                if (!currentIntersectedIndices.has(index)) {
+                    returnDot(index);
+                }
+            });
+            
+            lastIntersectedIndices = currentIntersectedIndices;
+
+
+            // Ensure continuous update if any animation is running
+            // This is mostly handled by the animation libraries' own ticks
+            // but a final needsUpdate can be good
+            // if (Array.from(lastIntersectedIndices).some(idx => particleData[idx].isDisplaced)) {
+            //     particlesGeometry.attributes.position.needsUpdate = true;
+            // }
+
+
+            particleSystem.rotation.y += 0.0005; // Slow rotation for visual appeal
+            particleSystem.rotation.x += 0.0003;
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // --- Window Resize Handling ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }, false);
+
+    </script>
+</body>
+</html>
