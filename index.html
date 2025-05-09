@@ -3,17 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Dot Sphere & Blog UI</title>
+    <title>Interactive Dot Sphere & Blog UI (Corrected)</title>
     <style>
         body {
             margin: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            /* The gradient is now on the container that HOLDS the canvas,
-               or you can keep it on the body if the canvas stacks correctly above it.
-               Let's try keeping it on body first and adjusting canvas container z-index. */
             background: linear-gradient(135deg, #111 0%, #333 50%, #000 100%);
             color: #eee;
-            overflow-x: hidden;
+            overflow-x: hidden; /* Prevent horizontal scroll from sphere movements */
             display: flex;
             flex-direction: column;
             min-height: 100vh;
@@ -25,10 +22,10 @@
             left: 0;
             width: 100%;
             height: 100%;
-            /* MODIFICATION: Removed z-index: -1 or set to 0 */
-            /* z-index: -1; */ /* This was likely the issue */
-             z-index: 0; /* Or simply remove the z-index line */
-            pointer-events: none; /* Allows clicking through to content below it */
+            /* CORE FIX: Ensure z-index allows it to be visible above body background
+               but below content-wrapper. z-index: 0 is appropriate here. */
+            z-index: 0;
+            pointer-events: none; /* Allows clicking through to content */
         }
 
         #sphereCanvas {
@@ -38,12 +35,12 @@
         }
 
         .content-wrapper {
-            position: relative; /* Establishes a stacking context */
+            position: relative; /* Establishes a new stacking context */
             z-index: 1;       /* Ensures this is above the sphere-container */
             padding: 20px;
             max-width: 900px;
             margin: 0 auto;
-            flex-grow: 1;
+            flex-grow: 1; /* Makes sure content pushes footer down */
         }
 
         header {
@@ -72,7 +69,7 @@
         }
 
         .modern-btn {
-            background-color: #500080;
+            background-color: #500080; /* Purple accent */
             color: white;
             border: none;
             padding: 12px 25px;
@@ -81,11 +78,11 @@
             display: inline-block;
             font-size: 16px;
             font-weight: 500;
-            border-radius: 25px;
+            border-radius: 25px; /* Curved edges */
             cursor: pointer;
             transition: background-color 0.3s ease, transform 0.2s ease;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            position: relative;
+            position: relative; /* For Mo.js burst */
         }
 
         .modern-btn:hover {
@@ -125,18 +122,18 @@
             text-align: center;
             padding: 30px 20px;
             border-top: 1px solid #444;
-            margin-top: 40px;
+            margin-top: 40px; /* Pushes footer down if content is short */
             color: #888;
         }
     </style>
 </head>
 <body>
-    <!-- Sphere container will be here, fixed positioned -->
+    <!-- This div will contain the Three.js canvas -->
     <div id="sphere-container">
         <canvas id="sphereCanvas"></canvas>
     </div>
 
-    <!-- Content wrapper will sit on top due to z-index -->
+    <!-- This wrapper will contain all the visible blog content -->
     <div class="content-wrapper">
         <header>
             <h1>My Modern Blog</h1>
@@ -145,7 +142,7 @@
 
         <nav>
             <button class="modern-btn">Home</button>
-            <button class="modern-btn" id="aboutBtn">About</button>
+            <button class="modern-btn">About</button>
             <button class="modern-btn">Articles</button>
             <button class="modern-btn" id="contactBtnMojs">Contact (Mo.js)</button>
         </nav>
@@ -154,21 +151,22 @@
             <article>
                 <h2>Welcome to the Future of UI</h2>
                 <p>This page demonstrates an interactive background sphere created with Three.js, Anime.js, and Velocity.js. The dots in the sphere react to your cursor, moving away and then returning to their original positions. The UI elements, like the buttons, are styled for a modern look, with one button featuring an animation from Mo.js.</p>
+                <p><strong>If you cannot see the sphere:</strong> Please open your browser's Developer Console (usually F12) and check for any error messages. Also, ensure your browser supports WebGL.</p>
             </article>
             <article>
                 <h2>Technology Stack</h2>
                 <p>We're using a blend of powerful JavaScript libraries:</p>
                 <ul>
                     <li><strong>Three.js:</strong> For the 3D rendering of the dot sphere.</li>
-                    <li><strong>Anime.js:</strong> For smooth animations of the dots.</li>
-                    <li><strong>Velocity.js:</strong> Also contributing to dot animations.</li>
+                    <li><strong>Anime.js:</strong> For smooth animations of the dots (used for return).</li>
+                    <li><strong>Velocity.js:</strong> Also contributing to dot animations (used for repulsion).</li>
                     <li><strong>Mo.js:</strong> To add delightful micro-interactions to UI elements.</li>
                 </ul>
             </article>
         </main>
 
         <footer>
-            <p>© 2023 Interactive Web Demo. All rights reserved.</p>
+            <p>© 2024 Interactive Web Demo. All rights reserved.</p>
         </footer>
     </div>
 
@@ -178,114 +176,124 @@
     <script src="https://cdn.jsdelivr.net/npm/@mojs/core@1.4.0/build/mo.umd.min.js"></script>
 
     <script>
+        // --- Debug: Check if basic elements are found ---
+        const sphereContainerEl = document.getElementById('sphere-container');
+        const canvasEl = document.getElementById('sphereCanvas');
+
+        if (!canvasEl || !sphereContainerEl) {
+            console.error("CRITICAL: Sphere canvas or container element not found in the DOM!");
+        } else {
+            console.log("Sphere canvas and container elements found. Initializing Three.js...");
+        }
+
         // --- Three.js Sphere Setup ---
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({
-            canvas: document.getElementById('sphereCanvas'),
-            alpha: true // Make canvas background transparent
+            canvas: canvasEl, // Use the fetched canvas element
+            alpha: true       // Make canvas background transparent
         });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setClearColor(0x000000, 0); // Ensure renderer clear color is transparent
 
-        const sphereRadius = 2.5;
-        const dotCount = 500; // Reduced for potentially better performance on some machines
-        const dotSize = 0.05; // Adjust if dots are too small/large
-        const purpleColor = 0x8A2BE2;
+        const sphereRadius = 2.8;
+        const dotCount = 600; // Increased dot count for better sphere definition
+        const dotSize = 0.05;
+        const purpleColor = 0x8A2BE2; // BlueViolet
 
         const particlesGeometry = new THREE.BufferGeometry();
-        const positions = [];
-        const originalPositions = [];
-        const particleData = [];
+        const positions = [];         // Flat array for buffer attribute: [x1,y1,z1, x2,y2,z2, ...]
+        const originalPositions = []; // Array of THREE.Vector3 for easy reference
+        const particleData = [];      // Stores { isDisplaced, velocityAnimation, animeAnimation }
 
-        for (let i = 0; i < dotCount; i++) {
-            const phi = Math.acos(-1 + (2 * i) / dotCount);
-            const theta = Math.sqrt(dotCount * Math.PI) * phi;
-            const x = sphereRadius * Math.cos(theta) * Math.sin(phi);
-            const y = sphereRadius * Math.sin(theta) * Math.sin(phi);
-            const z = sphereRadius * Math.cos(phi);
-            positions.push(x, y, z);
-            originalPositions.push(new THREE.Vector3(x, y, z));
-            particleData.push({ isDisplaced: false, velocityAnimation: null, animeAnimation: null });
+        // Fibonacci lattice (Golden Spiral) for even sphere distribution
+        const samples = dotCount;
+        const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+
+        for (let i = 0; i < samples; i++) {
+            const y = 1 - (i / (samples - 1)) * 2;  // y goes from 1 to -1
+            const radiusAtY = Math.sqrt(1 - y * y); // radius at this y
+            const theta = goldenAngle * i;          // angle for this point
+
+            const x = Math.cos(theta) * radiusAtY * sphereRadius;
+            const z = Math.sin(theta) * radiusAtY * sphereRadius;
+            const finalY = y * sphereRadius;
+
+            positions.push(x, finalY, z);
+            originalPositions.push(new THREE.Vector3(x, finalY, z));
+            particleData.push({
+                isDisplaced: false,
+                velocityAnimation: null,
+                animeAnimation: null
+            });
         }
+
         particlesGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
         const particlesMaterial = new THREE.PointsMaterial({
             color: purpleColor,
             size: dotSize,
-            sizeAttenuation: true
+            sizeAttenuation: true // Size of points diminishes with distance
         });
         const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
         scene.add(particleSystem);
+        console.log("Particle system created and added to scene.");
 
-        camera.position.z = 5;
+        camera.position.z = 6.5; // Pulled camera back slightly for better overview
 
         // --- Mouse Interaction ---
         const mouse = new THREE.Vector2(-100, -100); // Initialize off-screen
         const raycaster = new THREE.Raycaster();
-        raycaster.params.Points.threshold = 0.15; // Increased threshold for easier interaction
+        raycaster.params.Points.threshold = 0.18; // Adjust sensitivity for hitting points
 
         let lastIntersectedIndices = new Set();
 
         function onMouseMove(event) {
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-            // No need to check pointer-events here, handled by CSS on sphere-container
         }
-        // Listen on document because sphere-container might have pointer-events: none
         document.addEventListener('mousemove', onMouseMove, false);
 
 
         // --- Animation Logic ---
-        const repulsionStrength = 0.7; // How far dots move
-        const repulsionDuration = 250; // ms for Velocity
-        const returnSpeed = 700;    // ms for Anime.js
+        const repulsionStrength = 1.0;
+        const repulsionDuration = 200; // Velocity.js duration
+        const returnDuration = 900;    // Anime.js duration
 
         function repelDot(index) {
-            if (particleData[index].isDisplaced) return;
+            if (particleData[index].isDisplaced && particleData[index].velocityAnimation) return;
             particleData[index].isDisplaced = true;
 
-            if (particleData[index].animeAnimation) particleData[index].animeAnimation.pause();
-            if (particleData[index].velocityAnimation) Velocity(particleData[index].velocityAnimation.elements, "stop");
+            if (particleData[index].animeAnimation) {
+                particleData[index].animeAnimation.pause();
+                particleData[index].animeAnimation = null;
+            }
+            if (particleData[index].velocityAnimation) {
+                Velocity(particleData[index].velocityAnimationElements || particlesGeometry.attributes.position.array.slice(index*3, index*3+3), "stop");
+                particleData[index].velocityAnimation = null;
+            }
 
-
-            const currentPos = new THREE.Vector3(
-                particlesGeometry.attributes.position.getX(index),
-                particlesGeometry.attributes.position.getY(index),
-                particlesGeometry.attributes.position.getZ(index)
-            );
-            const originalPos = originalPositions[index];
-
-            // Repel radially outward from the sphere's perceived center (or dot's original position)
-            // For simplicity, let's assume repulsion pushes it slightly further from its original spot
-            // in the direction from the sphere center to the mouse projection on the XY plane of the dot.
-            // A simpler radial push:
-            const direction = currentPos.clone().normalize(); // From origin to current dot pos
+            const currentPos = new THREE.Vector3().fromBufferAttribute(particlesGeometry.attributes.position, index);
             
-            // A slightly more nuanced repulsion: vector from original point to mouse, scaled
-            // This requires projecting mouse onto the sphere or a near plane, which is more complex.
-            // Let's stick to a simpler radial push from its own original position, pushed further by 'mouse influence'
-            const pushDirection = currentPos.clone().sub(new THREE.Vector3(mouse.x*sphereRadius, mouse.y*sphereRadius, currentPos.z )).normalize(); // very rough
-             if (pushDirection.lengthSq() === 0) pushDirection.set(Math.random()-0.5, Math.random()-0.5, 0).normalize();
-
-
-            const targetPos = currentPos.clone().add(pushDirection.multiplyScalar(repulsionStrength));
+            // Create a target position by pushing the dot away from the mouse
+            // Project mouse onto a plane roughly where the sphere is
+            const mouseIn3D = new THREE.Vector3(mouse.x, mouse.y, 0.5);
+            mouseIn3D.unproject(camera); // Convert normalized screen coords to world coords
+            const directionFromMouse = currentPos.clone().sub(mouseIn3D).normalize();
             
+            const targetPos = currentPos.clone().add(directionFromMouse.multiplyScalar(repulsionStrength));
+
             const posArray = particlesGeometry.attributes.position.array;
-            const startValues = { x: posArray[index * 3], y: posArray[index * 3 + 1], z: posArray[index * 3 + 2] };
-
-            // Velocity.js requires an element or a collection of elements.
-            // We can't directly animate array indices. So, we animate a temporary object.
-            let animatedProxy = { ...startValues };
+            let animatedProxy = { x: posArray[index * 3], y: posArray[index * 3 + 1], z: posArray[index * 3 + 2] };
+            particleData[index].velocityAnimationElements = animatedProxy;
 
             particleData[index].velocityAnimation = Velocity(
-                animatedProxy, // The object whose properties will be animated
+                animatedProxy,
                 { x: targetPos.x, y: targetPos.y, z: targetPos.z },
                 {
                     duration: repulsionDuration,
-                    easing: "easeOutQuad",
-                    progress: function(elements, complete, remaining, start, tweenValue) {
-                        // 'elements' here will be the animatedProxy object
-                        posArray[index * 3] = animatedProxy.x;
+                    easing: "easeOutCubic",
+                    progress: function() {
+                        posArray[index * 3]     = animatedProxy.x;
                         posArray[index * 3 + 1] = animatedProxy.y;
                         posArray[index * 3 + 2] = animatedProxy.z;
                         particlesGeometry.attributes.position.needsUpdate = true;
@@ -295,34 +303,29 @@
                     }
                 }
             );
-            // Store the proxy on the animation data if you need to stop it by "elements"
-            // However, Velocity also returns the animation call ID which can be used.
-            // For simplicity, we're just stopping all animations on that dot.
         }
 
         function returnDot(index) {
-            if (!particleData[index].isDisplaced || particleData[index].animeAnimation) return; // Already home or returning
+            if (!particleData[index].isDisplaced || particleData[index].animeAnimation) return;
 
-            if (particleData[index].velocityAnimation) Velocity(particleData[index].velocityAnimation.elements, "stop");
+            if (particleData[index].velocityAnimation) {
+                 Velocity(particleData[index].velocityAnimationElements || particlesGeometry.attributes.position.array.slice(index*3, index*3+3), "stop");
+                particleData[index].velocityAnimation = null;
+            }
 
             const originalPos = originalPositions[index];
             const posArray = particlesGeometry.attributes.position.array;
+            let currentAnimatedPos = { x: posArray[index * 3], y: posArray[index * 3 + 1], z: posArray[index * 3 + 2] };
 
-            let currentAnimatedPos = {
-                x: posArray[index * 3],
-                y: posArray[index * 3 + 1],
-                z: posArray[index * 3 + 2]
-            };
-            
             particleData[index].animeAnimation = anime({
                 targets: currentAnimatedPos,
                 x: originalPos.x,
                 y: originalPos.y,
                 z: originalPos.z,
-                duration: returnSpeed,
-                easing: 'easeOutElastic(1, .7)',
+                duration: returnDuration,
+                easing: 'easeOutElastic(1, .75)',
                 update: function() {
-                    posArray[index * 3] = currentAnimatedPos.x;
+                    posArray[index * 3]     = currentAnimatedPos.x;
                     posArray[index * 3 + 1] = currentAnimatedPos.y;
                     posArray[index * 3 + 2] = currentAnimatedPos.z;
                     particlesGeometry.attributes.position.needsUpdate = true;
@@ -337,36 +340,31 @@
         // --- Mo.js Button Animation ---
         const mojsButton = document.getElementById('contactBtnMojs');
         if (mojsButton) {
+            console.log("Mo.js button found.");
             const burst = new mojs.Burst({
                 parent: mojsButton,
-                radius: { 0: 70 },
-                count: 10,
-                angle: { 0: 120 },
+                radius: { 0: 65 }, count: 10, angle: { 0: 100 },
                 children: {
-                    shape: 'circle',
-                    fill: '#8A2BE2',
-                    radius: {10: 0},
-                    stroke: '#500080',
-                    strokeWidth: 1,
-                    duration: 700,
-                    easing: 'cubic.out'
+                    shape: 'circle', fill: '#9370DB', // MediumPurple
+                    radius: {9: 0}, duration: 700, easing: 'cubic.out'
                 }
             });
-            mojsButton.addEventListener('click', function (e) {
-                burst.replay();
-            });
+            mojsButton.addEventListener('click', () => { burst.replay(); });
+        } else {
+            console.warn("Mo.js button ('contactBtnMojs') not found.");
         }
 
         // --- Render Loop ---
-        function animate() {
-            requestAnimationFrame(animate);
+        let frameCount = 0;
+        function animateLoop() { // Renamed to avoid conflict if user had 'animate' elsewhere
+            requestAnimationFrame(animateLoop);
+            frameCount++;
 
             raycaster.setFromCamera(mouse, camera);
             const intersects = raycaster.intersectObject(particleSystem);
             const currentIntersectedIndices = new Set();
 
             if (intersects.length > 0) {
-                // document.body.style.cursor = 'pointer'; // Can be distracting globally
                 for (const intersect of intersects) {
                     if (intersect.index !== undefined) {
                         currentIntersectedIndices.add(intersect.index);
@@ -375,8 +373,6 @@
                         }
                     }
                 }
-            } else {
-                // document.body.style.cursor = 'default';
             }
 
             lastIntersectedIndices.forEach(index => {
@@ -384,21 +380,25 @@
                     returnDot(index);
                 }
             });
-            
-            lastIntersectedIndices = new Set(currentIntersectedIndices); // Update for next frame
+            lastIntersectedIndices = currentIntersectedIndices;
 
-            particleSystem.rotation.y += 0.0005;
-            particleSystem.rotation.x += 0.0003;
+            particleSystem.rotation.y += 0.00035;
+            particleSystem.rotation.x += 0.0002;
 
             renderer.render(scene, camera);
+            if (frameCount === 1) {
+                console.log("First frame rendered by Three.js. If sphere is not visible, check CSS z-index and WebGL support.");
+            }
         }
+        console.log("Starting animation loop...");
+        animateLoop();
 
-        animate();
-
+        // --- Window Resize Handling ---
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            console.log("Window resized, Three.js scene updated.");
         }, false);
     </script>
 </body>
