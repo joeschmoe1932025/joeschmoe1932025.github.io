@@ -3,200 +3,321 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Movie & TV Show Search</title>
+    <title>Interactive Dot Sphere</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
     <style>
         body {
-            font-family: sans-serif;
-            background-color: #1a1a1a;
-            color: #ffffff;
-            padding: 20px;
-        }
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
-        h1 {
-            text-align: center;
-            color: #00cc99;
-        }
-        .search-box {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .search-box input[type="text"] {
-            padding: 10px;
-            margin-right: 10px;
-            border: 1px solid #333;
-            border-radius: 5px;
-            background-color: #333;
-            color: #ffffff;
-            width: 60%;
-            max-width: 400px;
-        }
-        .search-box button {
-            padding: 10px 20px;
-            background-color: #00cc99;
-            color: #1a1a1a;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1em;
-        }
-        .search-box button:hover {
-            background-color: #00a37a;
-        }
-        #results {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 20px;
-        }
-        .item {
-            background-color: #333;
-            border-radius: 8px;
+            margin: 0;
             overflow: hidden;
-            text-align: center;
-            padding-bottom: 10px;
+            background: #111;
         }
-        .item img {
-            width: 100%;
-            height: auto;
+        canvas {
             display: block;
         }
-        .item h3 {
-            font-size: 1em;
-            margin: 10px 5px 5px 5px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        .dot {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #fff;
+            transform: translate(-50%, -50%);
         }
-        .item p {
-            font-size: 0.9em;
-            margin: 0 5px;
-            color: #cccccc;
+        /* Add new styles for the input container */
+        #imdb-input-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+        #imdb-input {
+            font-size: 20px;
+            padding: 10px;
+            width: 300px;
+            text-align: center;
+            font-weight: bold;
+            border: 2px solid #fff;
+            border-radius: 5px;
+            background: transparent;
+            color: white;
+        }
+        #imdb-input::placeholder {
+            color: #aaa;
+        }
+        /* Add new styles for search results */
+        .search-results {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 15px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            padding: 10px;
+            width: 600px;
+        }
+        .movie-result {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        .movie-result:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+        .movie-poster {
+            width: 100%;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+        .movie-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin: 5px 0;
+            color: white;
+        }
+        .movie-year {
+            font-size: 12px;
+            color: #aaa;
+        }
+        /* Update input container for wider results */
+        #imdb-input-container {
+            width: 90%;
+            max-width: 1200px; /* Keep max width */
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+        }
+        #imdb-input {
+            width: 100%;
+            font-size: 24px;
+            padding: 15px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 8px;
+            color: white;
+        }
+        /* Make grid items larger */
+        .search-results {
+            width: 100%;
+            max-height: 70vh;
+            overflow-y: auto;
+            margin-top: 20px; /* Increased margin */
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); /* Increased min width */
+            gap: 25px; /* Increased gap */
+            padding: 20px 0;
+        }
+        .movie-result {
+            position: relative;
+            padding: 0;
+            overflow: hidden;
+            border-radius: 8px;
+            transition: transform 0.3s ease;
+            background: rgba(255, 255, 255, 0.05); /* Slightly visible background */
+        }
+        .movie-poster {
+            width: 100%;
+            height: auto; /* Maintain aspect ratio */
+            display: block; /* Remove extra space below image */
+            border-radius: 8px 8px 0 0; /* Round top corners */
+            object-fit: cover;
+        }
+        .movie-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 15px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.9));
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            color: white;
+            text-align: left; /* Align text left */
+        }
+        .movie-result:hover {
+            transform: scale(1.03); /* Slightly less aggressive scale */
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5); /* Add shadow on hover */
+        }
+        .movie-result:hover .movie-info {
+            transform: translateY(0);
+        }
+        .movie-title {
+            font-size: 16px; /* Increased font size */
+            font-weight: bold;
+            margin: 0 0 5px 0; /* Adjusted margin */
+        }
+        .movie-year {
+            font-size: 14px; /* Increased font size */
+            color: #ccc; /* Lighter color */
+            margin-bottom: 5px;
+        }
+        .movie-rating {
+            font-size: 14px; /* Increased font size */
+            color: #ffd700;
+            font-weight: bold;
+            margin-top: 0;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Search Movies & TV Shows</h1>
-        <div class="search-box">
-            <input type="text" id="searchInput" placeholder="Enter movie or TV show title">
-            <button id="searchButton">Search</button>
-        </div>
-        <div id="results">
-            <!-- Search results will be displayed here -->
-        </div>
+    <script>
+        const dots = [];
+        const numDots = 500;
+        const radius = 150;
+        let mouseX = 0;
+        let mouseY = 0;
+        
+        // Create sphere of dots
+        for (let i = 0; i < numDots; i++) {
+            const phi = Math.acos(-1 + (2 * i) / numDots);
+            const theta = Math.sqrt(numDots * Math.PI) * phi;
+            
+            const x = radius * Math.sin(phi) * Math.cos(theta);
+            const y = radius * Math.sin(phi) * Math.sin(theta);
+            const z = radius * Math.cos(phi);
+            
+            const dot = document.createElement('div');
+            dot.className = 'dot';
+            document.body.appendChild(dot);
+            
+            dots.push({
+                element: dot,
+                x: x,
+                y: y,
+                z: z,
+                scale: 1
+            });
+        }
+        
+        // Handle mouse movement
+        document.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX - window.innerWidth / 2) / 50;
+            mouseY = (e.clientY - window.innerHeight / 2) / 50;
+        });
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            dots.forEach(dot => {
+                // Rotate dots
+                const rotX = dot.x * Math.cos(0.005) - dot.z * Math.sin(0.005);
+                const rotZ = dot.z * Math.cos(0.005) + dot.x * Math.sin(0.005);
+                
+                dot.x = rotX;
+                dot.z = rotZ;
+                
+                // Add mouse interaction
+                const scale = 1 + (dot.z / radius) * 0.5;
+                
+                // Project 3D to 2D
+                const perspective = 500;
+                const scaleFactor = perspective / (perspective + dot.z);
+                
+                const x2d = dot.x * scaleFactor + window.innerWidth / 2 + mouseX;
+                const y2d = dot.y * scaleFactor + window.innerHeight / 2 + mouseY;
+                
+                // Apply transformations
+                anime({
+                    targets: dot.element,
+                    left: x2d,
+                    top: y2d,
+                    scale: scale,
+                    opacity: scale,
+                    duration: 1000,
+                    easing: 'easeOutExpo'
+                });
+            });
+        }
+        
+        animate();
+    </script>
+    <div id="imdb-input-container">
+        <input type="text" id="imdb-input" placeholder="Search for a movie..." autocomplete="off">
+        <div class="search-results" id="search-results"></div>
+    </div>
 
     <script>
-        const searchInput = document.getElementById('searchInput');
-        const searchButton = document.getElementById('searchButton');
-        const resultsDiv = document.getElementById('results');
+        const apiKey = '44a51a6ada6e6d6320f8ec2b056aefc9';
+        const proxyUrl = 'https://api.allorigins.win/raw?url=';
 
-        // !!! IMPORTANT: Replace with your actual TMDB API Key !!!
-        const TMDB_API_KEY = '44a51a6ada6e6d6320f8ec2b056aefc9';
-        const CORS_PROXY_URL = 'https://cors-anywhere.herokuapp.com/';
-        const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-        const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500'; // w500 is a common size
+        document.getElementById('imdb-input').addEventListener('keyup', async (e) => {
+            const query = e.target.value;
+            if (query.length > 0) {
+                try {
+                    const encodedUrl = encodeURIComponent(`https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`);
+                    const response = await fetch(`${proxyUrl}${encodedUrl}`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    displayResults(data.results);
+                } catch (error) {
+                    console.error('Search error:', error);
+                    const resultsContainer = document.getElementById('search-results');
+                    resultsContainer.innerHTML = '<div style="color: white; text-align: center; padding: 20px;">Error loading results. Please try again.</div>';
+                }
+            }
+        });
 
-        async function performSearch() {
-            const query = searchInput.value.trim();
-            if (!query) {
-                resultsDiv.innerHTML = '<p>Please enter a search term.</p>';
+        function displayResults(results) {
+            const resultsContainer = document.getElementById('search-results');
+            resultsContainer.innerHTML = '';
+
+            if (!results.length) {
+                resultsContainer.innerHTML = '<div style="color: white; text-align: center; padding: 20px;">No results found</div>';
                 return;
             }
 
-            // Clear previous results
-            resultsDiv.innerHTML = '';
-            resultsDiv.innerHTML = '<p>Loading...</p>';
-
-            // Construct the TMDB multi-search URL
-            const tmdbSearchUrl = `${TMDB_BASE_URL}/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}`;
-
-            // Combine with the CORS proxy URL
-            const proxyUrl = `${CORS_PROXY_URL}${tmdbSearchUrl}`;
-
-            try {
-                const response = await fetch(proxyUrl);
-
-                // Check if the proxy requires temporary access grant
-                if (response.status === 403 && response.headers.get('X-Cors-Error') === 'Open browser to grant access') {
-                     resultsDiv.innerHTML = '<p>CORS Anywhere requires temporary access. Please visit <a href="https://cors-anywhere.herokuapp.com/" target="_blank">https://cors-anywhere.herokuapp.com/</a> in a new tab and click the button to request access, then try searching again.</p>';
-                     return;
-                }
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-
-                if (data.results.length === 0) {
-                    resultsDiv.innerHTML = '<p>No results found.</p>';
-                    return;
-                }
-
-                resultsDiv.innerHTML = ''; // Clear "Loading..." or "No results found"
-
-                data.results.forEach(item => {
-                    // Filter out items without a poster or title/name
-                    if (!item.poster_path || (!item.title && !item.name)) {
-                        return;
+            results.filter(item => item.poster_path).slice(0, 12).forEach(item => {
+                const resultElement = document.createElement('div');
+                resultElement.className = 'movie-result';
+                
+                const posterPath = `https://image.tmdb.org/t/p/w300${item.poster_path}`;
+                const title = item.title || item.name;
+                const year = item.release_date ? item.release_date.slice(0, 4) : 
+                           item.first_air_date ? item.first_air_date.slice(0, 4) : 'Unknown';
+                
+                resultElement.innerHTML = `
+                    <img src="${posterPath}" alt="${title}" class="movie-poster">
+                    <div class="movie-info">
+                        <div class="movie-title">${title}</div>
+                        <div class="movie-year">${year}</div>
+                        <div class="movie-rating">★ ${item.vote_average ? item.vote_average.toFixed(1) : 'N/A'}</div>
+                    </div>
+                `;
+                
+                resultElement.addEventListener('click', () => {
+                    const iframe = document.createElement('iframe');
+                    if (item.media_type === 'tv') {
+                        // For TV shows, default to Season 1 Episode 1
+                        iframe.src = `https://vidora.su/tv/${item.id}/1/1`;
+                    } else {
+                        // For movies
+                        iframe.src = `https://vidora.su/movie/${item.id}?autoplay=true`;
                     }
-
-                    const itemElement = document.createElement('div');
-                    itemElement.classList.add('item');
-
-                    const posterUrl = `${TMDB_IMAGE_BASE_URL}${item.poster_path}`;
-                    const title = item.media_type === 'movie' ? item.title : item.name;
-                    const year = item.media_type === 'movie'
-                        ? (item.release_date ? item.release_date.split('-')[0] : 'N/A')
-                        : (item.first_air_date ? item.first_air_date.split('-')[0] : 'N/A');
-                    const rating = item.vote_average ? item.vote_average.toFixed(1) : 'N/A';
-                    const type = item.media_type === 'movie' ? 'Movie' : 'TV Show';
-                    const tmdbId = item.id; // Get the TMDB ID
-
-                    itemElement.innerHTML = `
-                        <img src="${posterUrl}" alt="${title} Poster">
-                        <h3>${title}</h3>
-                        <p>${year} | ${type}</p>
-                        <p>Rating: ${rating}</p>
-                    `;
-
-                    // Add click listener
-                                        itemElement.addEventListener('click', () => {
-                                            if (item.media_type === 'movie') {
-                                                const moviePlayerUrl = `https://vidora.su/movie/${tmdbId}?autoplay=true`;
-                                                document.getElementById('videoPlayer').src = moviePlayerUrl;
-                                                document.getElementById('playerContainer').style.display = 'block';
-                                                // Scroll to the player
-                                                document.getElementById('playerContainer').scrollIntoView({ behavior: 'smooth' });
-                                            } else if (item.media_type === 'tv') {
-                                                // TV shows require season and episode numbers, which are not available in search results.
-                                                // We can't generate the specific episode URL directly from search results.
-                                                // For now, we'll just log a message and show an alert.
-                                                console.log(`Clicked TV Show: ${title} (ID: ${tmdbId}). Cannot play specific episode without season/episode info.`);
-                                                alert(`To play "${title}", you would need to select a specific season and episode. This basic search only provides the show ID.`);
-                                                // To fully implement TV show playback, you would need to fetch season/episode data
-                                                // for the selected show ID and allow the user to choose.
-                                            }
-                                        });
-                                    
-                                        resultsDiv.appendChild(itemElement);
-                                    });
-                                    
-                                    } catch (error) {
-                                        console.error('Search failed:', error);
-                                        resultsDiv.innerHTML = `<p>An error occurred during the search: ${error.message}. Please check your API key and try again. If using cors-anywhere, ensure you have granted temporary access.</p>`;
-                                    }
-                                }
-
-                // Add event listeners
-                searchButton.addEventListener('click', performSearch);
-                searchInput.addEventListener('keypress', function(event) {
-                    if (event.key === 'Enter') {
-                        performSearch();
-                    }
+                    iframe.style.position = 'fixed';
+                    iframe.style.top = '0';
+                    iframe.style.left = '0';
+                    iframe.style.width = '100%';
+                    iframe.style.height = '100%';
+                    iframe.style.border = 'none';
+                    iframe.allowFullscreen = true;
+                    document.body.appendChild(iframe);
+                    document.getElementById('imdb-input-container').style.display = 'none';
                 });
-            </script>
-        </body>
-        </html>
+                
+                resultsContainer.appendChild(resultElement);
+            });
+        }
+    </script>
+</body>
+</html>
