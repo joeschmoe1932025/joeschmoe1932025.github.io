@@ -86,6 +86,7 @@
         <div id="results">
             <!-- Search results will be displayed here -->
         </div>
+    </div>
 
     <script>
         const searchInput = document.getElementById('searchInput');
@@ -153,7 +154,6 @@
                         : (item.first_air_date ? item.first_air_date.split('-')[0] : 'N/A');
                     const rating = item.vote_average ? item.vote_average.toFixed(1) : 'N/A';
                     const type = item.media_type === 'movie' ? 'Movie' : 'TV Show';
-                    const tmdbId = item.id; // Get the TMDB ID
 
                     itemElement.innerHTML = `
                         <img src="${posterUrl}" alt="${title} Poster">
@@ -162,41 +162,22 @@
                         <p>Rating: ${rating}</p>
                     `;
 
-                    // Add click listener
-                                        itemElement.addEventListener('click', () => {
-                                            if (item.media_type === 'movie') {
-                                                const moviePlayerUrl = `https://vidora.su/movie/${tmdbId}?autoplay=true`;
-                                                document.getElementById('videoPlayer').src = moviePlayerUrl;
-                                                document.getElementById('playerContainer').style.display = 'block';
-                                                // Scroll to the player
-                                                document.getElementById('playerContainer').scrollIntoView({ behavior: 'smooth' });
-                                            } else if (item.media_type === 'tv') {
-                                                // TV shows require season and episode numbers, which are not available in search results.
-                                                // We can't generate the specific episode URL directly from search results.
-                                                // For now, we'll just log a message and show an alert.
-                                                console.log(`Clicked TV Show: ${title} (ID: ${tmdbId}). Cannot play specific episode without season/episode info.`);
-                                                alert(`To play "${title}", you would need to select a specific season and episode. This basic search only provides the show ID.`);
-                                                // To fully implement TV show playback, you would need to fetch season/episode data
-                                                // for the selected show ID and allow the user to choose.
-                                            }
-                                        });
-                                    
-                                        resultsDiv.appendChild(itemElement);
-                                    });
-                                    
-                                    } catch (error) {
-                                        console.error('Search failed:', error);
-                                        resultsDiv.innerHTML = `<p>An error occurred during the search: ${error.message}. Please check your API key and try again. If using cors-anywhere, ensure you have granted temporary access.</p>`;
-                                    }
-                                }
-
-                // Add event listeners
-                searchButton.addEventListener('click', performSearch);
-                searchInput.addEventListener('keypress', function(event) {
-                    if (event.key === 'Enter') {
-                        performSearch();
-                    }
+                    resultsDiv.appendChild(itemElement);
                 });
-            </script>
-        </body>
-        </html>
+
+            } catch (error) {
+                console.error('Search failed:', error);
+                resultsDiv.innerHTML = `<p>An error occurred during the search: ${error.message}. Please check your API key and try again. If using cors-anywhere, ensure you have granted temporary access.</p>`;
+            }
+        }
+
+        // Add event listeners
+        searchButton.addEventListener('click', performSearch);
+        searchInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                performSearch();
+            }
+        });
+    </script>
+</body>
+</html>
