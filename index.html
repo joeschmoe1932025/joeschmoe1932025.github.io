@@ -245,13 +245,13 @@
 
     <script>
         const apiKey = '44a51a6ada6e6d6320f8ec2b056aefc9';
-        const proxyUrl = 'https://cors-anywhere.herokuapp.com/'; // Proxy server URL
+        const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
 
         document.getElementById('imdb-input').addEventListener('keyup', async (e) => {
             const query = e.target.value;
             if (query.length > 0) {
                 const response = await fetch(
-                    `${proxyUrl}https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`,
+                    `${proxyUrl}https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`,
                 );
                 const data = await response.json();
                 displayResults(data.results);
@@ -263,31 +263,37 @@
             resultsContainer.innerHTML = '';
 
             if (!results.length) {
-                resultsContainer.innerHTML = '<div style="color: white; text-align: center; padding: 20px;">No movies found</div>';
+                resultsContainer.innerHTML = '<div style="color: white; text-align: center; padding: 20px;">No results found</div>';
                 return;
             }
 
-            // Limit results and filter out movies without posters for better display
-            results.filter(movie => movie.poster_path).slice(0, 12).forEach(movie => {
-                const movieElement = document.createElement('div');
-                movieElement.className = 'movie-result';
+            results.filter(item => item.poster_path).slice(0, 12).forEach(item => {
+                const resultElement = document.createElement('div');
+                resultElement.className = 'movie-result';
                 
-                // Use direct TMDB image URL (no proxy)
-                const posterPath = `https://image.tmdb.org/t/p/w300${movie.poster_path}`;
+                const posterPath = `https://image.tmdb.org/t/p/w300${item.poster_path}`;
+                const title = item.title || item.name;
+                const year = item.release_date ? item.release_date.slice(0, 4) : 
+                           item.first_air_date ? item.first_air_date.slice(0, 4) : 'Unknown';
                 
-                movieElement.innerHTML = `
-                    <img src="${posterPath}" alt="${movie.title}" class="movie-poster">
+                resultElement.innerHTML = `
+                    <img src="${posterPath}" alt="${title}" class="movie-poster">
                     <div class="movie-info">
-                        <div class="movie-title">${movie.title}</div>
-                        <div class="movie-year">${movie.release_date ? movie.release_date.slice(0, 4) : 'Unknown'}</div>
-                        <div class="movie-rating">★ ${movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A'}</div>
+                        <div class="movie-title">${title}</div>
+                        <div class="movie-year">${year}</div>
+                        <div class="movie-rating">★ ${item.vote_average ? item.vote_average.toFixed(1) : 'N/A'}</div>
                     </div>
                 `;
                 
-                movieElement.addEventListener('click', () => {
+                resultElement.addEventListener('click', () => {
                     const iframe = document.createElement('iframe');
-                    // Direct URL for movie playback (no proxy)
-                    iframe.src = `https://vidora.su/movie/${movie.id}?autoplay=true`;
+                    if (item.media_type === 'tv') {
+                        // For TV shows, default to Season 1 Episode 1
+                        iframe.src = `https://vidora.su/tv/${item.id}/1/1`;
+                    } else {
+                        // For movies
+                        iframe.src = `https://vidora.su/movie/${item.id}?autoplay=true`;
+                    }
                     iframe.style.position = 'fixed';
                     iframe.style.top = '0';
                     iframe.style.left = '0';
@@ -299,7 +305,7 @@
                     document.getElementById('imdb-input-container').style.display = 'none';
                 });
                 
-                resultsContainer.appendChild(movieElement);
+                resultsContainer.appendChild(resultElement);
             });
         }
     </script>
