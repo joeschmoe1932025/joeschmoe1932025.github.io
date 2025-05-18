@@ -120,13 +120,12 @@
                 return;
             }
 
-            // Limit results and filter out movies without posters for better display
             results.filter(movie => movie.poster_path).slice(0, 12).forEach(movie => {
                 const movieElement = document.createElement('div');
                 movieElement.className = 'movie-result';
                 
-                // Use direct TMDB image URL (no proxy)
-                const posterPath = `https://image.tmdb.org/t/p/w300${movie.poster_path}`;
+                // Add proxy to image URL as well
+                const posterPath = `${proxyUrl}https://image.tmdb.org/t/p/w300${movie.poster_path}`;
                 
                 movieElement.innerHTML = `
                     <img src="${posterPath}" alt="${movie.title}" class="movie-poster">
@@ -139,7 +138,6 @@
                 
                 movieElement.addEventListener('click', () => {
                     const iframe = document.createElement('iframe');
-                    // Direct URL for movie playback (no proxy)
                     iframe.src = `https://vidora.su/movie/${movie.id}?autoplay=true`;
                     iframe.style.position = 'fixed';
                     iframe.style.top = '0';
