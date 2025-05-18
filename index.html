@@ -250,22 +250,11 @@
         document.getElementById('imdb-input').addEventListener('keyup', async (e) => {
             const query = e.target.value;
             if (query.length > 0) {
-                // Search for both movies and TV shows
-                const [moviesResponse, tvResponse] = await Promise.all([
-                    fetch(`${proxyUrl}https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`),
-                    fetch(`${proxyUrl}https://api.themoviedb.org/3/search/tv?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`)
-                ]);
-                
-                const moviesData = await moviesResponse.json();
+                // Search for TV shows first
+                const tvResponse = await fetch(`${proxyUrl}https://api.themoviedb.org/3/search/tv?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`);
                 const tvData = await tvResponse.json();
                 
-                // Combine results with type indicator
-                const combinedResults = [
-                    ...moviesData.results.map(m => ({...m, type: 'movie'})),
-                    ...tvData.results.map(t => ({...t, type: 'tv'}))
-                ];
-                
-                displayResults(combinedResults);
+                displayResults(tvData.results.map(t => ({...t, type: 'tv'})));
             }
         });
 
@@ -274,7 +263,7 @@
             resultsContainer.innerHTML = '';
 
             if (!results.length) {
-                resultsContainer.innerHTML = '<div style="color: white; text-align: center; padding: 20px;">No results found</div>';
+                resultsContainer.innerHTML = '<div style="color: white; text-align: center; padding: 20px;">No TV shows found</div>';
                 return;
             }
 
@@ -284,10 +273,8 @@
                 resultElement.className = 'movie-result';
                 
                 const posterPath = `https://image.tmdb.org/t/p/w300${item.poster_path}`;
-                const title = item.type === 'tv' ? item.name : item.title;
-                const year = item.type === 'tv' 
-                    ? (item.first_air_date ? item.first_air_date.slice(0, 4) : 'Unknown')
-                    : (item.release_date ? item.release_date.slice(0, 4) : 'Unknown');
+                const title = item.name;
+                const year = item.first_air_date ? item.first_air_date.slice(0, 4) : 'Unknown';
                 
                 resultElement.innerHTML = `
                     <img src="${posterPath}" alt="${title}" class="movie-poster">
@@ -295,15 +282,13 @@
                         <div class="movie-title">${title}</div>
                         <div class="movie-year">${year}</div>
                         <div class="movie-rating">★ ${item.vote_average ? item.vote_average.toFixed(1) : 'N/A'}</div>
-                        <div class="movie-type" style="font-size: 12px; color: #ccc;">${item.type === 'tv' ? 'TV Show' : 'Movie'}</div>
+                        <div class="movie-type" style="font-size: 12px; color: #ccc;">TV Show</div>
                     </div>
                 `;
                 
                 resultElement.addEventListener('click', () => {
                     const iframe = document.createElement('iframe');
-                    iframe.src = item.type === 'tv'  // Remove 'const' keyword here - it was causing the error
-                        ? `https://vidora.su/tv/${item.id}?autoplay=true`
-                        : `https://vidora.su/movie/${item.id}?autoplay=true`;
+                    iframe.src = `https://vidora.su/tv/${item.id}/1/1`;  // Default to Season 1, Episode 1
                     iframe.style.position = 'fixed';
                     iframe.style.top = '0';
                     iframe.style.left = '0';
