@@ -13,94 +13,71 @@
         }
 
         body {
-            background: #141414;
+            background: #0a0a0a;
             color: white;
             padding: 20px;
+            min-height: 100vh;
         }
 
         .search-container {
-            max-width: 600px;
+            max-width: 1200px;
             margin: 20px auto;
+            padding: 0 20px;
         }
 
         #search-input {
             width: 100%;
-            padding: 15px;
-            border-radius: 25px;
-            border: none;
-            font-size: 16px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            border: 1px solid #2c2c2c;
+            background: #1a1a1a;
+            color: white;
+            font-size: 18px;
         }
 
         .results-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 25px;
             margin-top: 30px;
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
         }
 
         .movie-card {
-            background: #232323;
-            border-radius: 10px;
+            background: transparent;
+            border-radius: 8px;
             overflow: hidden;
-            transition: transform 0.3s;
-            cursor: pointer;
-        }
-
-        .movie-card:hover {
-            transform: scale(1.05);
+            transition: transform 0.2s;
         }
 
         .movie-poster {
             width: 100%;
-            height: 300px;
+            aspect-ratio: 2/3;
             object-fit: cover;
+            border-radius: 8px;
         }
 
         .movie-info {
-            padding: 15px;
+            padding: 10px 5px;
         }
 
         .movie-title {
-            font-size: 16px;
-            margin-bottom: 8px;
+            font-size: 14px;
+            margin-bottom: 4px;
+            color: #fff;
         }
 
         .movie-details {
-            font-size: 14px;
-            color: #aaa;
-        }
-
-        #player-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.9);
-            z-index: 1000;
-        }
-
-        .modal-content {
-            position: relative;
-            width: 90%;
-            height: 90%;
-            margin: 2% auto;
-        }
-
-        .close-modal {
-            position: absolute;
-            right: 10px;
-            top: -30px;
-            color: white;
-            font-size: 24px;
-            cursor: pointer;
+            font-size: 12px;
+            color: #666;
         }
     </style>
 </head>
 <body>
     <div class="search-container">
-        <input type="text" id="search-input" placeholder="Search for movies or TV shows...">
+        <input type="text" id="search-input" placeholder="Search for your favorite movies and TV shows">
     </div>
     <div class="results-grid" id="results"></div>
     <div id="player-modal">
@@ -112,8 +89,18 @@
 
     <script>
         const API_KEY = '44a51a6ada6e6d6320f8ec2b056aefc9';
-        const PROXY_URL = 'https://api.allorigins.win/raw?url=';
+        const PROXY_URL = 'https://cors-anywhere.herokuapp.com/';
         const TMDB_API = 'https://api.themoviedb.org/3';
+        const TMDB_IMG_URL = 'https://image.tmdb.org/t/p/w500';
+
+        let searchTimeout;
+
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                searchMedia(e.target.value);
+            }, 300);
+        });
 
         async function searchMedia(query) {
             if (!query) {
@@ -122,17 +109,16 @@
             }
 
             try {
-                const tmdbUrl = `${TMDB_API}/search/multi?api_key=${API_KEY}&query=${encodeURIComponent(query)}&page=1`;
-                const response = await fetch(`${PROXY_URL}${encodeURIComponent(tmdbUrl)}`);
+                const response = await fetch(`${PROXY_URL}${TMDB_API}/search/multi?api_key=${API_KEY}&query=${encodeURIComponent(query)}&page=1`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
                 const data = await response.json();
-                if (data.results && data.results.length > 0) {
-                    displayResults(data.results.slice(0, 15));
-                } else {
-                    document.getElementById('results').innerHTML = '<p style="text-align: center; width: 100%;">No results found</p>';
-                }
+                displayResults(data.results.slice(0, 15));
             } catch (error) {
-                console.error('Error fetching results:', error);
-                document.getElementById('results').innerHTML = '<p style="text-align: center; width: 100%;">Error loading results. Please try again.</p>';
+                console.error('Error:', error);
             }
         }
 
@@ -144,24 +130,21 @@
                 if (item.media_type === 'movie' || item.media_type === 'tv') {
                     const card = document.createElement('div');
                     card.className = 'movie-card';
-                    card.onclick = () => openPlayer(item.id, item.media_type);
-
+                    
+                    const year = (item.release_date || item.first_air_date || '').split('-')[0];
                     const posterPath = item.poster_path 
                         ? `${TMDB_IMG_URL}${item.poster_path}`
                         : 'https://via.placeholder.com/300x450?text=No+Poster';
 
-                    const year = (item.release_date || item.first_air_date || '').split('-')[0] || 'N/A';
-                    
                     card.innerHTML = `
-                        <img class="movie-poster" src="${posterPath}" alt="${item.title || item.name}"
-                             onerror="this.src='https://via.placeholder.com/300x450?text=No+Poster'">
+                        <img class="movie-poster" src="${posterPath}" loading="lazy" alt="${item.title || item.name}">
                         <div class="movie-info">
                             <h3 class="movie-title">${item.title || item.name}</h3>
-                            <div class="movie-details">
-                                ${year} | ⭐ ${item.vote_average.toFixed(1)} | ${item.media_type.toUpperCase()}
-                            </div>
+                            <div class="movie-details">${year || 'N/A'}</div>
                         </div>
                     `;
+                    
+                    card.onclick = () => openPlayer(item.id, item.media_type);
                     resultsContainer.appendChild(card);
                 }
             });
