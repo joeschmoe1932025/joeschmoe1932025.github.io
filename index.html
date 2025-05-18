@@ -95,11 +95,29 @@
             const query = e.target.value;
             if (query.length > 0) {
                 try {
-                    const response = await fetch(
-                        `${proxyUrl}https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`,
-                    );
-                    const data = await response.json();
-                    displayResults(data.results);
+                    // Search both movies and TV shows
+                    const [movieResponse, tvResponse] = await Promise.all([
+                        fetch(`${proxyUrl}https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`),
+                        fetch(`${proxyUrl}https://api.themoviedb.org/3/search/tv?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`)
+                    ]);
+
+                    const [movieData, tvData] = await Promise.all([
+                        movieResponse.json(),
+                        tvResponse.json()
+                    ]);
+
+                    // Combine and format results
+                    const combinedResults = [
+                        ...movieData.results.map(item => ({...item, type: 'movie'})),
+                        ...tvData.results.map(item => ({
+                            ...item,
+                            type: 'tv',
+                            title: item.name,
+                            release_date: item.first_air_date
+                        }))
+                    ];
+
+                    displayResults(combinedResults);
                 } catch (error) {
                     console.error('Search error:', error);
                 }
@@ -111,28 +129,32 @@
             resultsContainer.innerHTML = '';
 
             if (!results?.length) {
-                resultsContainer.innerHTML = '<div style="color: white; text-align: center; padding: 20px;">No movies found</div>';
+                resultsContainer.innerHTML = '<div style="color: white; text-align: center; padding: 20px;">No results found</div>';
                 return;
             }
 
-            results.filter(movie => movie.poster_path).slice(0, 12).forEach(movie => {
+            results.filter(item => item.poster_path)
+                   .slice(0, 12)
+                   .forEach(item => {
                 const movieElement = document.createElement('div');
                 movieElement.className = 'movie-result';
                 
-                const posterPath = `https://image.tmdb.org/t/p/w300${movie.poster_path}`;
+                const posterPath = `https://image.tmdb.org/t/p/w300${item.poster_path}`;
                 
                 movieElement.innerHTML = `
-                    <img src="${posterPath}" alt="${movie.title}" class="movie-poster" loading="lazy">
+                    <img src="${posterPath}" alt="${item.title}" class="movie-poster" loading="lazy">
                     <div class="movie-info">
-                        <div class="movie-title">${movie.title}</div>
-                        <div class="movie-year">${movie.release_date ? movie.release_date.slice(0, 4) : 'Unknown'}</div>
-                        <div class="movie-rating">★ ${movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A'}</div>
+                        <div class="movie-title">${item.title}</div>
+                        <div class="movie-year">${item.release_date ? item.release_date.slice(0, 4) : 'Unknown'}</div>
+                        <div class="movie-rating">★ ${item.vote_average ? item.vote_average.toFixed(1) : 'N/A'}</div>
+                        <div style="color: #0af;">${item.type.toUpperCase()}</div>
                     </div>
                 `;
                 
                 movieElement.addEventListener('click', () => {
                     const iframe = document.createElement('iframe');
-                    iframe.src = `https://vidora.su/movie/${movie.id}?autoplay=true`;
+                    // Use different URL structure for movies and TV shows
+                    iframe.src = `https://vidora.su/${item.type}/${item.id}?autoplay=true`;
                     iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9999;';
                     iframe.allowFullscreen = true;
                     document.body.appendChild(iframe);
