@@ -168,8 +168,8 @@
 <body>
     <script>
         const dots = [];
-        const numDots = 50;
-        const radius = 50;
+        const numDots = 500;
+        const radius = 150;
         let mouseX = 0;
         let mouseY = 0;
         
@@ -245,16 +245,26 @@
 
     <script>
         const apiKey = '44a51a6ada6e6d6320f8ec2b056aefc9';
-        const proxyUrl = 'https://cors-anywhere.herokuapp.com/'; // Proxy server URL
+        const proxyUrl = 'https://api.allorigins.win/raw?url=';
 
         document.getElementById('imdb-input').addEventListener('keyup', async (e) => {
             const query = e.target.value;
             if (query.length > 0) {
-                // Search for TV shows first
-                const tvResponse = await fetch(`${proxyUrl}https://api.themoviedb.org/3/search/tv?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`);
-                const tvData = await tvResponse.json();
-                
-                displayResults(tvData.results.map(t => ({...t, type: 'tv'})));
+                try {
+                    const encodedUrl = encodeURIComponent(`https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`);
+                    const response = await fetch(`${proxyUrl}${encodedUrl}`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    displayResults(data.results);
+                } catch (error) {
+                    console.error('Search error:', error);
+                    const resultsContainer = document.getElementById('search-results');
+                    resultsContainer.innerHTML = '<div style="color: white; text-align: center; padding: 20px;">Error loading results. Please try again.</div>';
+                }
             }
         });
 
@@ -263,18 +273,18 @@
             resultsContainer.innerHTML = '';
 
             if (!results.length) {
-                resultsContainer.innerHTML = '<div style="color: white; text-align: center; padding: 20px;">No TV shows found</div>';
+                resultsContainer.innerHTML = '<div style="color: white; text-align: center; padding: 20px;">No results found</div>';
                 return;
             }
 
-            // Filter and limit results
             results.filter(item => item.poster_path).slice(0, 12).forEach(item => {
                 const resultElement = document.createElement('div');
                 resultElement.className = 'movie-result';
                 
                 const posterPath = `https://image.tmdb.org/t/p/w300${item.poster_path}`;
-                const title = item.name;
-                const year = item.first_air_date ? item.first_air_date.slice(0, 4) : 'Unknown';
+                const title = item.title || item.name;
+                const year = item.release_date ? item.release_date.slice(0, 4) : 
+                           item.first_air_date ? item.first_air_date.slice(0, 4) : 'Unknown';
                 
                 resultElement.innerHTML = `
                     <img src="${posterPath}" alt="${title}" class="movie-poster">
@@ -282,13 +292,18 @@
                         <div class="movie-title">${title}</div>
                         <div class="movie-year">${year}</div>
                         <div class="movie-rating">★ ${item.vote_average ? item.vote_average.toFixed(1) : 'N/A'}</div>
-                        <div class="movie-type" style="font-size: 12px; color: #ccc;">TV Show</div>
                     </div>
                 `;
                 
                 resultElement.addEventListener('click', () => {
                     const iframe = document.createElement('iframe');
-                    iframe.src = `https://vidora.su/tv/${item.id}/1/1`;  // Default to Season 1, Episode 1
+                    if (item.media_type === 'tv') {
+                        // For TV shows, default to Season 1 Episode 1
+                        iframe.src = `https://vidora.su/tv/${item.id}/1/1`;
+                    } else {
+                        // For movies
+                        iframe.src = `https://vidora.su/movie/${item.id}?autoplay=true`;
+                    }
                     iframe.style.position = 'fixed';
                     iframe.style.top = '0';
                     iframe.style.left = '0';
