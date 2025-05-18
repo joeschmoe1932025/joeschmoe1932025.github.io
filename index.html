@@ -245,16 +245,26 @@
 
     <script>
         const apiKey = '44a51a6ada6e6d6320f8ec2b056aefc9';
-        const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+        const proxyUrl = 'https://api.allorigins.win/raw?url=';
 
         document.getElementById('imdb-input').addEventListener('keyup', async (e) => {
             const query = e.target.value;
             if (query.length > 0) {
-                const response = await fetch(
-                    `${proxyUrl}https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`,
-                );
-                const data = await response.json();
-                displayResults(data.results);
+                try {
+                    const encodedUrl = encodeURIComponent(`https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`);
+                    const response = await fetch(`${proxyUrl}${encodedUrl}`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    displayResults(data.results);
+                } catch (error) {
+                    console.error('Search error:', error);
+                    const resultsContainer = document.getElementById('search-results');
+                    resultsContainer.innerHTML = '<div style="color: white; text-align: center; padding: 20px;">Error loading results. Please try again.</div>';
+                }
             }
         });
 
