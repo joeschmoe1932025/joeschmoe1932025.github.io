@@ -97,11 +97,20 @@
         
         animate();
     </script>
-    <iframe
-        src="https://vidora.su/movie/299534?autoplay=true"
-        width="100%"
-        height="100%"
-        allowfullscreen
-    ></iframe>
+    <script>
+        // Get IMDb ID from user
+        let imdbId = prompt("Enter IMDb ID (e.g., tt299534):");
+        if (!imdbId) {
+            imdbId = "tt299534"; // Default movie if none entered
+        }
+        
+        // Create iframe with dynamic source
+        const iframe = document.createElement('iframe');
+        iframe.src = `https://vidora.su/movie/${imdbId.replace('tt', '')}?autoplay=true`;
+        iframe.width = "100%";
+        iframe.height = "100%";
+        iframe.allowFullscreen = true;
+        document.body.appendChild(iframe);
+    </script>
 </body>
 </html>
