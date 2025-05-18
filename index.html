@@ -112,18 +112,8 @@
 
     <script>
         const API_KEY = '44a51a6ada6e6d6320f8ec2b056aefc9';
-        const PROXY_URL = 'https://cors-anywhere.herokuapp.com/';
+        const PROXY_URL = 'https://api.allorigins.win/raw?url=';
         const TMDB_API = 'https://api.themoviedb.org/3';
-        const TMDB_IMG_URL = 'https://image.tmdb.org/t/p/w500';
-
-        let searchTimeout;
-
-        document.getElementById('search-input').addEventListener('input', (e) => {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                searchMedia(e.target.value);
-            }, 500);
-        });
 
         async function searchMedia(query) {
             if (!query) {
@@ -132,11 +122,8 @@
             }
 
             try {
-                const response = await fetch(`${PROXY_URL}${TMDB_API}/search/multi?api_key=${API_KEY}&query=${encodeURIComponent(query)}&page=1`, {
-                    headers: {
-                        'Origin': window.location.origin
-                    }
-                });
+                const tmdbUrl = `${TMDB_API}/search/multi?api_key=${API_KEY}&query=${encodeURIComponent(query)}&page=1`;
+                const response = await fetch(`${PROXY_URL}${encodeURIComponent(tmdbUrl)}`);
                 const data = await response.json();
                 if (data.results && data.results.length > 0) {
                     displayResults(data.results.slice(0, 15));
@@ -212,3 +199,4 @@
         padding: 20px;
     }
 </style>
+
