@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Dot Sphere</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <title>Movie Search</title>
     <style>
         body {
             margin: 0;
@@ -166,78 +165,6 @@
     </style>
 </head>
 <body>
-    <script>
-        const dots = [];
-        const numDots = 500;
-        const radius = 150;
-        let mouseX = 0;
-        let mouseY = 0;
-        
-        // Create sphere of dots
-        for (let i = 0; i < numDots; i++) {
-            const phi = Math.acos(-1 + (2 * i) / numDots);
-            const theta = Math.sqrt(numDots * Math.PI) * phi;
-            
-            const x = radius * Math.sin(phi) * Math.cos(theta);
-            const y = radius * Math.sin(phi) * Math.sin(theta);
-            const z = radius * Math.cos(phi);
-            
-            const dot = document.createElement('div');
-            dot.className = 'dot';
-            document.body.appendChild(dot);
-            
-            dots.push({
-                element: dot,
-                x: x,
-                y: y,
-                z: z,
-                scale: 1
-            });
-        }
-        
-        // Handle mouse movement
-        document.addEventListener('mousemove', (e) => {
-            mouseX = (e.clientX - window.innerWidth / 2) / 50;
-            mouseY = (e.clientY - window.innerHeight / 2) / 50;
-        });
-        
-        // Animation loop
-        function animate() {
-            requestAnimationFrame(animate);
-            
-            dots.forEach(dot => {
-                // Rotate dots
-                const rotX = dot.x * Math.cos(0.005) - dot.z * Math.sin(0.005);
-                const rotZ = dot.z * Math.cos(0.005) + dot.x * Math.sin(0.005);
-                
-                dot.x = rotX;
-                dot.z = rotZ;
-                
-                // Add mouse interaction
-                const scale = 1 + (dot.z / radius) * 0.5;
-                
-                // Project 3D to 2D
-                const perspective = 500;
-                const scaleFactor = perspective / (perspective + dot.z);
-                
-                const x2d = dot.x * scaleFactor + window.innerWidth / 2 + mouseX;
-                const y2d = dot.y * scaleFactor + window.innerHeight / 2 + mouseY;
-                
-                // Apply transformations
-                anime({
-                    targets: dot.element,
-                    left: x2d,
-                    top: y2d,
-                    scale: scale,
-                    opacity: scale,
-                    duration: 1000,
-                    easing: 'easeOutExpo'
-                });
-            });
-        }
-        
-        animate();
-    </script>
     <div id="imdb-input-container">
         <input type="text" id="imdb-input" placeholder="Search for a movie..." autocomplete="off">
         <div class="search-results" id="search-results"></div>
@@ -245,16 +172,22 @@
 
     <script>
         const apiKey = '44a51a6ada6e6d6320f8ec2b056aefc9';
-g        const proxyUrl = 'https://cors-anywhere.herokuapp.com/'; // Proxy server URL
+        const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
 
         document.getElementById('imdb-input').addEventListener('keyup', async (e) => {
             const query = e.target.value;
             if (query.length > 0) {
-                const response = await fetch(
-                    `${proxyUrl}https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`,
-                );
-                const data = await response.json();
-                displayResults(data.results);
+                try {
+                    const response = await fetch(
+                        `${proxyUrl}https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`,
+                    );
+                    const data = await response.json();
+                    displayResults(data.results);
+                } catch (error) {
+                    console.error('Error fetching data:', error);
+                    document.getElementById('search-results').innerHTML = 
+                        '<div style="color: white; text-align: center; padding: 20px;">Error loading results. Please try again.</div>';
+                }
             }
         });
 
@@ -267,12 +200,10 @@ g        const proxyUrl = 'https://cors-anywhere.herokuapp.com/'; // Proxy serve
                 return;
             }
 
-            // Limit results and filter out movies without posters for better display
-            results.filter(movie => movie.poster_path).slice(0, 12).forEach(movie => { // Filter and show up to 12 results
+            results.filter(movie => movie.poster_path).slice(0, 12).forEach(movie => {
                 const movieElement = document.createElement('div');
                 movieElement.className = 'movie-result';
                 
-                // Use w300 for larger posters
                 const posterPath = `https://image.tmdb.org/t/p/w300${movie.poster_path}`;
                 
                 movieElement.innerHTML = `
@@ -304,4 +235,3 @@ g        const proxyUrl = 'https://cors-anywhere.herokuapp.com/'; // Proxy serve
     </script>
 </body>
 </html>
-
