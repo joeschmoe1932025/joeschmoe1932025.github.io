@@ -22,6 +22,32 @@
             background: #fff;
             transform: translate(-50%, -50%);
         }
+        /* Add new styles for the input container */
+        #imdb-input-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+        #imdb-input {
+            font-size: 20px;
+            padding: 10px;
+            width: 300px;
+            text-align: center;
+            font-weight: bold;
+            border: 2px solid #fff;
+            border-radius: 5px;
+            background: transparent;
+            color: white;
+        }
+        #imdb-input::placeholder {
+            color: #aaa;
+        }
     </style>
 </head>
 <body>
@@ -97,20 +123,34 @@
         
         animate();
     </script>
+    <div id="imdb-input-container">
+        <input type="text" id="imdb-input" placeholder="Enter IMDb ID (e.g., tt299534)">
+        <button onclick="loadMovie()" style="
+            margin-top: 15px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background: #fff;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        ">Load Movie</button>
+    </div>
+
     <script>
-        // Get IMDb ID from user
-        let imdbId = prompt("Enter IMDb ID (e.g., tt299534):");
-        if (!imdbId) {
-            imdbId = "tt299534"; // Default movie if none entered
+        function loadMovie() {
+            const imdbId = document.getElementById('imdb-input').value || 'tt299534';
+            const iframe = document.createElement('iframe');
+            iframe.src = `https://vidora.su/movie/${imdbId.replace('tt', '')}?autoplay=true`;
+            iframe.width = "100%";
+            iframe.height = "100%";
+            iframe.allowFullscreen = true;
+            document.body.insertBefore(iframe, document.body.firstChild);
+            document.getElementById('imdb-input-container').style.display = 'none';
         }
         
-        // Create iframe with dynamic source
-        const iframe = document.createElement('iframe');
-        iframe.src = `https://vidora.su/movie/${imdbId.replace('tt', '')}?autoplay=true`;
-        iframe.width = "100%";
-        iframe.height = "100%";
-        iframe.allowFullscreen = true;
-        document.body.appendChild(iframe);
+        // Remove the old script section that used prompt()
     </script>
 </body>
 </html>
