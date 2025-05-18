@@ -301,7 +301,7 @@
                 
                 resultElement.addEventListener('click', () => {
                     const iframe = document.createElement('iframe');
-                    const iframe.src = item.type === 'tv' 
+                    iframe.src = item.type === 'tv'  // Remove 'const' keyword here - it was causing the error
                         ? `https://vidora.su/tv/${item.id}?autoplay=true`
                         : `https://vidora.su/movie/${item.id}?autoplay=true`;
                     iframe.style.position = 'fixed';
