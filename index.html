@@ -3,59 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Movie Search</title>
+    <title>Interactive Dot Sphere</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
     <style>
         body {
             margin: 0;
+            overflow: hidden;
             background: #111;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: Arial, sans-serif;
         }
+        canvas {
+            display: block;
+        }
+        .dot {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #fff;
+            transform: translate(-50%, -50%);
+        }
+        /* Add new styles for the input container */
         #imdb-input-container {
-            width: 90%;
-            max-width: 1200px;
-            background: rgba(0, 0, 0, 0.9);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
             padding: 20px;
             border-radius: 10px;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+        #imdb-input {
+            font-size: 20px;
+            padding: 10px;
+            width: 300px;
+            text-align: center;
+            font-weight: bold;
+            border: 2px solid #fff;
+            border-radius: 5px;
+            background: transparent;
+            color: white;
+        }
+        #imdb-input::placeholder {
+            color: #aaa;
+        }
+        /* Add new styles for search results */
+        .search-results {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 15px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            padding: 10px;
+            width: 600px;
+        }
+        .movie-result {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        .movie-result:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+        .movie-poster {
+            width: 100%;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+        .movie-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin: 5px 0;
+            color: white;
+        }
+        .movie-year {
+            font-size: 12px;
+            color: #aaa;
+        }
+        /* Update input container for wider results */
+        #imdb-input-container {
+            width: 90%;
+            max-width: 1200px; /* Keep max width */
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
         }
         #imdb-input {
             width: 100%;
-            font-size: 20px;
-            padding: 15px;
+            font-size: 24px;
+            padding: 15px 20px;
             background: rgba(255, 255, 255, 0.1);
             border: none;
             border-radius: 8px;
             color: white;
         }
+        /* Make grid items larger */
         .search-results {
             width: 100%;
             max-height: 70vh;
             overflow-y: auto;
-            margin-top: 20px;
+            margin-top: 20px; /* Increased margin */
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
-            padding: 10px 0;
-        }
-        @media (max-width: 768px) {
-            .search-results {
-                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-                gap: 15px;
-            }
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); /* Increased min width */
+            gap: 25px; /* Increased gap */
+            padding: 20px 0;
         }
         .movie-result {
             position: relative;
-            border-radius: 8px;
+            padding: 0;
             overflow: hidden;
-            background: rgba(255, 255, 255, 0.05);
-            transition: transform 0.3s;
+            border-radius: 8px;
+            transition: transform 0.3s ease;
+            background: rgba(255, 255, 255, 0.05); /* Slightly visible background */
         }
         .movie-poster {
             width: 100%;
-            aspect-ratio: 2/3;
+            height: auto; /* Maintain aspect ratio */
+            display: block; /* Remove extra space below image */
+            border-radius: 8px 8px 0 0; /* Round top corners */
             object-fit: cover;
         }
         .movie-info {
@@ -63,25 +133,111 @@
             bottom: 0;
             left: 0;
             right: 0;
-            padding: 10px;
+            padding: 15px;
             background: linear-gradient(transparent, rgba(0,0,0,0.9));
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
             color: white;
+            text-align: left; /* Align text left */
+        }
+        .movie-result:hover {
+            transform: scale(1.03); /* Slightly less aggressive scale */
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5); /* Add shadow on hover */
+        }
+        .movie-result:hover .movie-info {
+            transform: translateY(0);
         }
         .movie-title {
-            font-size: 14px;
+            font-size: 16px; /* Increased font size */
             font-weight: bold;
-            margin-bottom: 4px;
+            margin: 0 0 5px 0; /* Adjusted margin */
         }
-        .movie-year, .movie-rating {
-            font-size: 12px;
-            color: #ccc;
+        .movie-year {
+            font-size: 14px; /* Increased font size */
+            color: #ccc; /* Lighter color */
+            margin-bottom: 5px;
         }
         .movie-rating {
+            font-size: 14px; /* Increased font size */
             color: #ffd700;
+            font-weight: bold;
+            margin-top: 0;
         }
     </style>
 </head>
 <body>
+    <script>
+        const dots = [];
+        const numDots = 500;
+        const radius = 150;
+        let mouseX = 0;
+        let mouseY = 0;
+        
+        // Create sphere of dots
+        for (let i = 0; i < numDots; i++) {
+            const phi = Math.acos(-1 + (2 * i) / numDots);
+            const theta = Math.sqrt(numDots * Math.PI) * phi;
+            
+            const x = radius * Math.sin(phi) * Math.cos(theta);
+            const y = radius * Math.sin(phi) * Math.sin(theta);
+            const z = radius * Math.cos(phi);
+            
+            const dot = document.createElement('div');
+            dot.className = 'dot';
+            document.body.appendChild(dot);
+            
+            dots.push({
+                element: dot,
+                x: x,
+                y: y,
+                z: z,
+                scale: 1
+            });
+        }
+        
+        // Handle mouse movement
+        document.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX - window.innerWidth / 2) / 50;
+            mouseY = (e.clientY - window.innerHeight / 2) / 50;
+        });
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            dots.forEach(dot => {
+                // Rotate dots
+                const rotX = dot.x * Math.cos(0.005) - dot.z * Math.sin(0.005);
+                const rotZ = dot.z * Math.cos(0.005) + dot.x * Math.sin(0.005);
+                
+                dot.x = rotX;
+                dot.z = rotZ;
+                
+                // Add mouse interaction
+                const scale = 1 + (dot.z / radius) * 0.5;
+                
+                // Project 3D to 2D
+                const perspective = 500;
+                const scaleFactor = perspective / (perspective + dot.z);
+                
+                const x2d = dot.x * scaleFactor + window.innerWidth / 2 + mouseX;
+                const y2d = dot.y * scaleFactor + window.innerHeight / 2 + mouseY;
+                
+                // Apply transformations
+                anime({
+                    targets: dot.element,
+                    left: x2d,
+                    top: y2d,
+                    scale: scale,
+                    opacity: scale,
+                    duration: 1000,
+                    easing: 'easeOutExpo'
+                });
+            });
+        }
+        
+        animate();
+    </script>
     <div id="imdb-input-container">
         <input type="text" id="imdb-input" placeholder="Search for a movie..." autocomplete="off">
         <div class="search-results" id="search-results"></div>
@@ -89,38 +245,16 @@
 
     <script>
         const apiKey = '44a51a6ada6e6d6320f8ec2b056aefc9';
-        const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+        const proxyUrl = 'https://cors-anywhere.herokuapp.com/'; // Proxy server URL
 
         document.getElementById('imdb-input').addEventListener('keyup', async (e) => {
             const query = e.target.value;
             if (query.length > 0) {
-                try {
-                    // Search both movies and TV shows
-                    const [movieResponse, tvResponse] = await Promise.all([
-                        fetch(`${proxyUrl}https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`),
-                        fetch(`${proxyUrl}https://api.themoviedb.org/3/search/tv?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`)
-                    ]);
-
-                    const [movieData, tvData] = await Promise.all([
-                        movieResponse.json(),
-                        tvResponse.json()
-                    ]);
-
-                    // Combine and format results
-                    const combinedResults = [
-                        ...movieData.results.map(item => ({...item, type: 'movie'})),
-                        ...tvData.results.map(item => ({
-                            ...item,
-                            type: 'tv',
-                            title: item.name,
-                            release_date: item.first_air_date
-                        }))
-                    ];
-
-                    displayResults(combinedResults);
-                } catch (error) {
-                    console.error('Search error:', error);
-                }
+                const response = await fetch(
+                    `${proxyUrl}https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`,
+                );
+                const data = await response.json();
+                displayResults(data.results);
             }
         });
 
@@ -128,34 +262,38 @@
             const resultsContainer = document.getElementById('search-results');
             resultsContainer.innerHTML = '';
 
-            if (!results?.length) {
-                resultsContainer.innerHTML = '<div style="color: white; text-align: center; padding: 20px;">No results found</div>';
+            if (!results.length) {
+                resultsContainer.innerHTML = '<div style="color: white; text-align: center; padding: 20px;">No movies found</div>';
                 return;
             }
 
-            results.filter(item => item.poster_path)
-                   .slice(0, 12)
-                   .forEach(item => {
+            // Limit results and filter out movies without posters for better display
+            results.filter(movie => movie.poster_path).slice(0, 12).forEach(movie => {
                 const movieElement = document.createElement('div');
                 movieElement.className = 'movie-result';
                 
-                const posterPath = `https://image.tmdb.org/t/p/w300${item.poster_path}`;
+                // Use direct TMDB image URL (no proxy)
+                const posterPath = `https://image.tmdb.org/t/p/w300${movie.poster_path}`;
                 
                 movieElement.innerHTML = `
-                    <img src="${posterPath}" alt="${item.title}" class="movie-poster" loading="lazy">
+                    <img src="${posterPath}" alt="${movie.title}" class="movie-poster">
                     <div class="movie-info">
-                        <div class="movie-title">${item.title}</div>
-                        <div class="movie-year">${item.release_date ? item.release_date.slice(0, 4) : 'Unknown'}</div>
-                        <div class="movie-rating">★ ${item.vote_average ? item.vote_average.toFixed(1) : 'N/A'}</div>
-                        <div style="color: #0af;">${item.type.toUpperCase()}</div>
+                        <div class="movie-title">${movie.title}</div>
+                        <div class="movie-year">${movie.release_date ? movie.release_date.slice(0, 4) : 'Unknown'}</div>
+                        <div class="movie-rating">★ ${movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A'}</div>
                     </div>
                 `;
                 
                 movieElement.addEventListener('click', () => {
                     const iframe = document.createElement('iframe');
-                    // Use different URL structure for movies and TV shows
-                    iframe.src = `https://vidora.su/${item.type}/${item.id}?autoplay=true`;
-                    iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9999;';
+                    // Direct URL for movie playback (no proxy)
+                    iframe.src = `https://vidora.su/movie/${movie.id}?autoplay=true`;
+                    iframe.style.position = 'fixed';
+                    iframe.style.top = '0';
+                    iframe.style.left = '0';
+                    iframe.style.width = '100%';
+                    iframe.style.height = '100%';
+                    iframe.style.border = 'none';
                     iframe.allowFullscreen = true;
                     document.body.appendChild(iframe);
                     document.getElementById('imdb-input-container').style.display = 'none';
