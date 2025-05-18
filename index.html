@@ -3,158 +3,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Movie Search</title>
+    <title>Movie & TV Show Search</title>
     <style>
-        body {
+        * {
+            box-sizing: border-box;
             margin: 0;
-            background: #111;
+            padding: 0;
             font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #0a0a0a;
+            color: white;
+            padding: 20px;
             min-height: 100vh;
         }
-        #imdb-input-container {
-            width: 90%;
+
+        .search-container {
             max-width: 1200px;
             margin: 20px auto;
-            background: rgba(0, 0, 0, 0.9);
-            padding: 20px;
-            border-radius: 8px;
+            padding: 0 20px;
         }
-        #imdb-input {
+
+        #search-input {
             width: 100%;
-            font-size: 18px;
-            padding: 12px 15px;
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
+            padding: 15px 20px;
             border-radius: 8px;
+            border: 1px solid #2c2c2c;
+            background: #1a1a1a;
             color: white;
+            font-size: 18px;
         }
-        .search-results {
-            width: 100%;
-            margin-top: 20px;
+
+        .results-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 15px;
-            padding: 10px 0;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
         }
-        @media (min-width: 768px) {
-            .search-results {
-                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-                gap: 20px;
-            }
-            #imdb-input {
-                font-size: 24px;
-            }
-        }
-        .movie-result {
-            position: relative;
+
+        .movie-card {
+            background: transparent;
             border-radius: 8px;
             overflow: hidden;
-            background: rgba(255, 255, 255, 0.05);
-            transition: transform 0.3s ease;
-            -webkit-tap-highlight-color: transparent;
+            transition: transform 0.2s;
         }
+
         .movie-poster {
             width: 100%;
             aspect-ratio: 2/3;
             object-fit: cover;
+            border-radius: 8px;
         }
+
         .movie-info {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 10px;
-            background: linear-gradient(transparent, rgba(0,0,0,0.9));
-            color: white;
+            padding: 10px 5px;
         }
+
         .movie-title {
             font-size: 14px;
-            font-weight: bold;
             margin-bottom: 4px;
+            color: #fff;
         }
-        .movie-year, .movie-rating {
+
+        .movie-details {
             font-size: 12px;
-            color: #ccc;
-        }
-        .movie-rating {
-            color: #ffd700;
+            color: #666;
         }
     </style>
 </head>
 <body>
-    <div id="imdb-input-container">
-        <input type="text" id="imdb-input" placeholder="Search for a movie..." autocomplete="off">
-        <div class="search-results" id="search-results"></div>
+    <div class="search-container">
+        <input type="text" id="search-input" placeholder="Search for your favorite movies and TV shows">
+    </div>
+    <div class="results-grid" id="results"></div>
+    <div id="player-modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <div id="player-container"></div>
+        </div>
     </div>
 
     <script>
-        const apiKey = '44a51a6ada6e6d6320f8ec2b056aefc9';
-        const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+        const API_KEY = '44a51a6ada6e6d6320f8ec2b056aefc9';
+        const PROXY_URL = 'https://cors-anywhere.herokuapp.com/';
+        const TMDB_API = 'https://api.themoviedb.org/3';
+        const TMDB_IMG_URL = 'https://image.tmdb.org/t/p/w500';
+
         let searchTimeout;
 
-        document.getElementById('imdb-input').addEventListener('input', (e) => {
+        document.getElementById('search-input').addEventListener('input', (e) => {
             clearTimeout(searchTimeout);
-            const query = e.target.value;
-            
-            if (query.length > 0) {
-                searchTimeout = setTimeout(async () => {
-                    try {
-                        const response = await fetch(
-                            `${proxyUrl}https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`
-                        );
-                        const data = await response.json();
-                        displayResults(data.results);
-                    } catch (error) {
-                        console.error('Search failed:', error);
-                    }
-                }, 300);
-            }
+            searchTimeout = setTimeout(() => {
+                searchMedia(e.target.value);
+            }, 300);
         });
 
-        function displayResults(results) {
-            const resultsContainer = document.getElementById('search-results');
-            resultsContainer.innerHTML = '';
-
-            if (!results.length) {
-                resultsContainer.innerHTML = '<div style="color: white; text-align: center; padding: 20px;">No movies found</div>';
+        async function searchMedia(query) {
+            if (!query) {
+                document.getElementById('results').innerHTML = '';
                 return;
             }
 
-            // Limit results and filter out movies without posters for better display
-            results.filter(movie => movie.poster_path).slice(0, 12).forEach(movie => {
-                const movieElement = document.createElement('div');
-                movieElement.className = 'movie-result';
-                
-                // Use direct TMDB image URL (no proxy)
-                const posterPath = `https://image.tmdb.org/t/p/w300${movie.poster_path}`;
-                
-                movieElement.innerHTML = `
-                    <img src="${posterPath}" alt="${movie.title}" class="movie-poster">
-                    <div class="movie-info">
-                        <div class="movie-title">${movie.title}</div>
-                        <div class="movie-year">${movie.release_date ? movie.release_date.slice(0, 4) : 'Unknown'}</div>
-                        <div class="movie-rating">★ ${movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A'}</div>
-                    </div>
-                `;
-                
-                movieElement.addEventListener('click', () => {
-                    const iframe = document.createElement('iframe');
-                    // Direct URL for movie playback (no proxy)
-                    iframe.src = `https://vidora.su/movie/${movie.id}?autoplay=true`;
-                    iframe.style.position = 'fixed';
-                    iframe.style.top = '0';
-                    iframe.style.left = '0';
-                    iframe.style.width = '100%';
-                    iframe.style.height = '100%';
-                    iframe.style.border = 'none';
-                    iframe.allowFullscreen = true;
-                    document.body.appendChild(iframe);
-                    document.getElementById('imdb-input-container').style.display = 'none';
+            try {
+                const response = await fetch(`${PROXY_URL}${TMDB_API}/search/multi?api_key=${API_KEY}&query=${encodeURIComponent(query)}&page=1`, {
+                    headers: {
+                        'x-requested-with': 'XMLHttpRequest',
+                        'origin': null
+                    }
                 });
-                
-                resultsContainer.appendChild(movieElement);
+                const data = await response.json();
+                displayResults(data.results.slice(0, 15));
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function displayResults(results) {
+            const resultsContainer = document.getElementById('results');
+            resultsContainer.innerHTML = '';
+
+            results.forEach(item => {
+                if (item.media_type === 'movie' || item.media_type === 'tv') {
+                    const card = document.createElement('div');
+                    card.className = 'movie-card';
+                    
+                    const year = (item.release_date || item.first_air_date || '').split('-')[0];
+                    const posterPath = item.poster_path 
+                        ? `${TMDB_IMG_URL}${item.poster_path}`
+                        : 'https://via.placeholder.com/300x450?text=No+Poster';
+
+                    card.innerHTML = `
+                        <img class="movie-poster" src="${posterPath}" loading="lazy" alt="${item.title || item.name}">
+                        <div class="movie-info">
+                            <h3 class="movie-title">${item.title || item.name}</h3>
+                            <div class="movie-details">${year || 'N/A'}</div>
+                        </div>
+                    `;
+                    
+                    card.onclick = () => openPlayer(item.id, item.media_type);
+                    resultsContainer.appendChild(card);
+                }
             });
         }
+
+        function openPlayer(tmdbId, mediaType) {
+            const modal = document.getElementById('player-modal');
+            const playerContainer = document.getElementById('player-container');
+            
+            playerContainer.innerHTML = `
+                <iframe
+                    src="https://vidora.su/${mediaType}/${tmdbId}?autoplay=true"
+                    width="100%"
+                    height="100%"
+                    allowfullscreen
+                ></iframe>
+            `;
+            
+            modal.style.display = 'block';
+        }
+
+        document.querySelector('.close-modal').addEventListener('click', () => {
+            document.getElementById('player-modal').style.display = 'none';
+            document.getElementById('player-container').innerHTML = '';
+        });
     </script>
 </body>
 </html>
+
+<style>
+    .results-grid p {
+        color: #aaa;
+        font-size: 16px;
+        grid-column: 1 / -1;
+        padding: 20px;
+    }
+</style>
+
