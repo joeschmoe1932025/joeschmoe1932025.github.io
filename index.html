@@ -4,15 +4,99 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Dot Sphere</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
     <style>
         body {
             margin: 0;
             overflow: hidden;
             background: #111;
         }
+        canvas {
+            display: block;
+        }
+        .dot {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #fff;
+            transform: translate(-50%, -50%);
+        }
     </style>
 </head>
 <body>
+    <script>
+        const dots = [];
+        const numDots = 500;
+        const radius = 150;
+        let mouseX = 0;
+        let mouseY = 0;
+        
+        // Create sphere of dots
+        for (let i = 0; i < numDots; i++) {
+            const phi = Math.acos(-1 + (2 * i) / numDots);
+            const theta = Math.sqrt(numDots * Math.PI) * phi;
+            
+            const x = radius * Math.sin(phi) * Math.cos(theta);
+            const y = radius * Math.sin(phi) * Math.sin(theta);
+            const z = radius * Math.cos(phi);
+            
+            const dot = document.createElement('div');
+            dot.className = 'dot';
+            document.body.appendChild(dot);
+            
+            dots.push({
+                element: dot,
+                x: x,
+                y: y,
+                z: z,
+                scale: 1
+            });
+        }
+        
+        // Handle mouse movement
+        document.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX - window.innerWidth / 2) / 50;
+            mouseY = (e.clientY - window.innerHeight / 2) / 50;
+        });
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            dots.forEach(dot => {
+                // Rotate dots
+                const rotX = dot.x * Math.cos(0.005) - dot.z * Math.sin(0.005);
+                const rotZ = dot.z * Math.cos(0.005) + dot.x * Math.sin(0.005);
+                
+                dot.x = rotX;
+                dot.z = rotZ;
+                
+                // Add mouse interaction
+                const scale = 1 + (dot.z / radius) * 0.5;
+                
+                // Project 3D to 2D
+                const perspective = 500;
+                const scaleFactor = perspective / (perspective + dot.z);
+                
+                const x2d = dot.x * scaleFactor + window.innerWidth / 2 + mouseX;
+                const y2d = dot.y * scaleFactor + window.innerHeight / 2 + mouseY;
+                
+                // Apply transformations
+                anime({
+                    targets: dot.element,
+                    left: x2d,
+                    top: y2d,
+                    scale: scale,
+                    opacity: scale,
+                    duration: 1000,
+                    easing: 'easeOutExpo'
+                });
+            });
+        }
+        
+        animate();
+    </script>
     <iframe
         src="https://vidora.su/movie/299534?autoplay=true"
         width="100%"
