@@ -114,6 +114,7 @@
         const API_KEY = '44a51a6ada6e6d6320f8ec2b056aefc9';
         const PROXY_URL = 'https://cors-anywhere.herokuapp.com/';
         const TMDB_API = 'https://api.themoviedb.org/3';
+        const TMDB_IMG_URL = 'https://image.tmdb.org/t/p/w500';
 
         let searchTimeout;
 
@@ -131,11 +132,20 @@
             }
 
             try {
-                const response = await fetch(`${PROXY_URL}${TMDB_API}/search/multi?api_key=${API_KEY}&query=${encodeURIComponent(query)}&page=1`);
+                const response = await fetch(`${PROXY_URL}${TMDB_API}/search/multi?api_key=${API_KEY}&query=${encodeURIComponent(query)}&page=1`, {
+                    headers: {
+                        'Origin': window.location.origin
+                    }
+                });
                 const data = await response.json();
-                displayResults(data.results.slice(0, 15));
+                if (data.results && data.results.length > 0) {
+                    displayResults(data.results.slice(0, 15));
+                } else {
+                    document.getElementById('results').innerHTML = '<p style="text-align: center; width: 100%;">No results found</p>';
+                }
             } catch (error) {
                 console.error('Error fetching results:', error);
+                document.getElementById('results').innerHTML = '<p style="text-align: center; width: 100%;">Error loading results. Please try again.</p>';
             }
         }
 
@@ -150,15 +160,18 @@
                     card.onclick = () => openPlayer(item.id, item.media_type);
 
                     const posterPath = item.poster_path 
-                        ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
+                        ? `${TMDB_IMG_URL}${item.poster_path}`
                         : 'https://via.placeholder.com/300x450?text=No+Poster';
 
+                    const year = (item.release_date || item.first_air_date || '').split('-')[0] || 'N/A';
+                    
                     card.innerHTML = `
-                        <img class="movie-poster" src="${posterPath}" alt="${item.title || item.name}">
+                        <img class="movie-poster" src="${posterPath}" alt="${item.title || item.name}"
+                             onerror="this.src='https://via.placeholder.com/300x450?text=No+Poster'">
                         <div class="movie-info">
                             <h3 class="movie-title">${item.title || item.name}</h3>
                             <div class="movie-details">
-                                ${item.release_date || item.first_air_date || 'N/A'} | ⭐ ${item.vote_average.toFixed(1)}
+                                ${year} | ⭐ ${item.vote_average.toFixed(1)} | ${item.media_type.toUpperCase()}
                             </div>
                         </div>
                     `;
@@ -173,7 +186,7 @@
             
             playerContainer.innerHTML = `
                 <iframe
-                    src="https://vidora.su/movie/${tmdbId}?autoplay=true"
+                    src="https://vidora.su/${mediaType}/${tmdbId}?autoplay=true"
                     width="100%"
                     height="100%"
                     allowfullscreen
@@ -190,3 +203,12 @@
     </script>
 </body>
 </html>
+
+<style>
+    .results-grid p {
+        color: #aaa;
+        font-size: 16px;
+        grid-column: 1 / -1;
+        padding: 20px;
+    }
+</style>
