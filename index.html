@@ -88,12 +88,8 @@
         }
         /* Update input container for wider results */
         #imdb-input-container {
-            width: 640px;
-        }
-        /* Update search container styles */
-        #imdb-input-container {
             width: 90%;
-            max-width: 1200px;
+            max-width: 1200px; /* Keep max width */
             background: rgba(0, 0, 0, 0.9);
             padding: 30px;
         }
@@ -106,11 +102,15 @@
             border-radius: 8px;
             color: white;
         }
+        /* Make grid items larger */
         .search-results {
             width: 100%;
             max-height: 70vh;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
+            overflow-y: auto;
+            margin-top: 20px; /* Increased margin */
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); /* Increased min width */
+            gap: 25px; /* Increased gap */
             padding: 20px 0;
         }
         .movie-result {
@@ -119,9 +119,13 @@
             overflow: hidden;
             border-radius: 8px;
             transition: transform 0.3s ease;
+            background: rgba(255, 255, 255, 0.05); /* Slightly visible background */
         }
         .movie-poster {
-            aspect-ratio: 2/3;
+            width: 100%;
+            height: auto; /* Maintain aspect ratio */
+            display: block; /* Remove extra space below image */
+            border-radius: 8px 8px 0 0; /* Round top corners */
             object-fit: cover;
         }
         .movie-info {
@@ -133,17 +137,31 @@
             background: linear-gradient(transparent, rgba(0,0,0,0.9));
             transform: translateY(100%);
             transition: transform 0.3s ease;
+            color: white;
+            text-align: left; /* Align text left */
         }
         .movie-result:hover {
-            transform: scale(1.05);
+            transform: scale(1.03); /* Slightly less aggressive scale */
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5); /* Add shadow on hover */
         }
         .movie-result:hover .movie-info {
             transform: translateY(0);
         }
+        .movie-title {
+            font-size: 16px; /* Increased font size */
+            font-weight: bold;
+            margin: 0 0 5px 0; /* Adjusted margin */
+        }
+        .movie-year {
+            font-size: 14px; /* Increased font size */
+            color: #ccc; /* Lighter color */
+            margin-bottom: 5px;
+        }
         .movie-rating {
+            font-size: 14px; /* Increased font size */
             color: #ffd700;
             font-weight: bold;
-            margin-top: 5px;
+            margin-top: 0;
         }
     </style>
 </head>
@@ -245,24 +263,24 @@
             resultsContainer.innerHTML = '';
 
             if (!results.length) {
-                resultsContainer.innerHTML = '<div style="color: white; text-align: center;">No movies found</div>';
+                resultsContainer.innerHTML = '<div style="color: white; text-align: center; padding: 20px;">No movies found</div>';
                 return;
             }
 
-            results.slice(0, 10).forEach(movie => {
+            // Limit results and filter out movies without posters for better display
+            results.filter(movie => movie.poster_path).slice(0, 12).forEach(movie => { // Filter and show up to 12 results
                 const movieElement = document.createElement('div');
                 movieElement.className = 'movie-result';
                 
-                const posterPath = movie.poster_path
-                    ? `https://image.tmdb.org/t/p/w200${movie.poster_path}`
-                    : 'https://via.placeholder.com/200x300?text=No+Poster';
+                // Use w300 for larger posters
+                const posterPath = `https://image.tmdb.org/t/p/w300${movie.poster_path}`;
                 
                 movieElement.innerHTML = `
                     <img src="${posterPath}" alt="${movie.title}" class="movie-poster">
                     <div class="movie-info">
                         <div class="movie-title">${movie.title}</div>
                         <div class="movie-year">${movie.release_date ? movie.release_date.slice(0, 4) : 'Unknown'}</div>
-                        <div class="movie-rating">★ ${movie.vote_average.toFixed(1)}</div>
+                        <div class="movie-rating">★ ${movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A'}</div>
                     </div>
                 `;
                 
@@ -286,4 +304,3 @@
     </script>
 </body>
 </html>
-
