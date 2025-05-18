@@ -249,24 +249,22 @@
 
         document.getElementById('imdb-input').addEventListener('keyup', async (e) => {
             const query = e.target.value;
+            const resultsContainer = document.getElementById('search-results');
+            resultsContainer.innerHTML = ''; // Clear previous results immediately
+
             if (query.length > 0) {
-                // Search for both TV shows and movies
-                const [tvResponse, movieResponse] = await Promise.all([
-                    fetch(`${proxyUrl}https://api.themoviedb.org/3/search/tv?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`),
-                    fetch(`${proxyUrl}https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`)
-                ]);
+                // Search for movies
+                const movieResponse = await fetch(`${proxyUrl}https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`);
+                const movieData = await movieResponse.json();
+                const movieResults = movieData.results.map(m => ({...m, type: 'movie'}));
 
-                const [tvData, movieData] = await Promise.all([
-                    tvResponse.json(),
-                    movieResponse.json()
-                ]);
-
-                // Combine and format results
-                const combinedResults = [
-                    ...tvData.results.map(t => ({...t, type: 'tv', name: t.name, first_air_date: t.first_air_date})),
-                    ...movieData.results.map(m => ({...m, type: 'movie', name: m.title, first_air_date: m.release_date}))
-                ];
-
+                // Search for TV shows
+                const tvResponse = await fetch(`${proxyUrl}https://api.themoviedb.org/3/search/tv?api_key=${apiKey}&query=${encodeURIComponent(query)}&include_adult=false`);
+                const tvData = await tvResponse.json();
+                const tvResults = tvData.results.map(t => ({...t, type: 'tv'}));
+                
+                // Combine and display results
+                const combinedResults = [...movieResults, ...tvResults];
                 displayResults(combinedResults);
             }
         });
@@ -281,29 +279,39 @@
             }
 
             // Filter and limit results
-            results.filter(item => item.poster_path).slice(0, 12).forEach(item => {
+            results.filter(item => item.poster_path).slice(0, 24).forEach(item => { // Increased limit slightly
                 const resultElement = document.createElement('div');
                 resultElement.className = 'movie-result';
                 
                 const posterPath = `https://image.tmdb.org/t/p/w300${item.poster_path}`;
-                const title = item.name;
-                const year = item.first_air_date ? item.first_air_date.slice(0, 4) : 'Unknown';
                 
+                // Determine title, year, and link based on type
+                let title, year, vidoraLink, itemTypeDisplay;
+                if (item.type === 'movie') {
+                    title = item.title;
+                    year = item.release_date ? item.release_date.slice(0, 4) : 'Unknown';
+                    vidoraLink = `https://vidora.su/movie/${item.id}`; // Assuming this is the movie link format
+                    itemTypeDisplay = 'Movie';
+                } else { // type === 'tv'
+                    title = item.name;
+                    year = item.first_air_date ? item.first_air_date.slice(0, 4) : 'Unknown';
+                    vidoraLink = `https://vidora.su/tv/${item.id}/1/1`; // Default to Season 1, Episode 1
+                    itemTypeDisplay = 'TV Show';
+                }
+
                 resultElement.innerHTML = `
                     <img src="${posterPath}" alt="${title}" class="movie-poster">
                     <div class="movie-info">
                         <div class="movie-title">${title}</div>
                         <div class="movie-year">${year}</div>
                         <div class="movie-rating">★ ${item.vote_average ? item.vote_average.toFixed(1) : 'N/A'}</div>
-                        <div class="movie-type" style="font-size: 12px; color: #ccc;">${item.type === 'tv' ? 'TV Show' : 'Movie'}</div>
+                        <div class="movie-type" style="font-size: 12px; color: #ccc;">${itemTypeDisplay}</div>
                     </div>
                 `;
                 
                 resultElement.addEventListener('click', () => {
                     const iframe = document.createElement('iframe');
-                    iframe.src = item.type === 'tv' 
-                        ? `https://vidora.su/tv/${item.id}/1/1`  // TV Show (Season 1, Episode 1)
-                        : `https://vidora.su/movie/${item.id}`;  // Movie
+                    iframe.src = vidoraLink;
                     iframe.style.position = 'fixed';
                     iframe.style.top = '0';
                     iframe.style.left = '0';
