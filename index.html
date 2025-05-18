@@ -245,7 +245,7 @@
 
     <script>
         const apiKey = '44a51a6ada6e6d6320f8ec2b056aefc9';
-        const proxyUrl = 'https://cors-anywhere.herokuapp.com/'; // Proxy server URL
+g        const proxyUrl = 'https://cors-anywhere.herokuapp.com/'; // Proxy server URL
 
         document.getElementById('imdb-input').addEventListener('keyup', async (e) => {
             const query = e.target.value;
@@ -268,11 +268,11 @@
             }
 
             // Limit results and filter out movies without posters for better display
-            results.filter(movie => movie.poster_path).slice(0, 12).forEach(movie => {
+            results.filter(movie => movie.poster_path).slice(0, 12).forEach(movie => { // Filter and show up to 12 results
                 const movieElement = document.createElement('div');
                 movieElement.className = 'movie-result';
                 
-                // Use direct TMDB image URL (no proxy)
+                // Use w300 for larger posters
                 const posterPath = `https://image.tmdb.org/t/p/w300${movie.poster_path}`;
                 
                 movieElement.innerHTML = `
@@ -286,7 +286,6 @@
                 
                 movieElement.addEventListener('click', () => {
                     const iframe = document.createElement('iframe');
-                    // Direct URL for movie playback (no proxy)
                     iframe.src = `https://vidora.su/movie/${movie.id}?autoplay=true`;
                     iframe.style.position = 'fixed';
                     iframe.style.top = '0';
